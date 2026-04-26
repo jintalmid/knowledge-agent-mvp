@@ -2,48 +2,66 @@
 
 ## 模块目标
 
-定义 Agent 每轮的最小过程：`plan -> tool call -> observation -> reflection -> decision`。
+定义 Agent 每一轮的最小过程：`plan -> tool call -> observation -> reflection -> decision`。
 
-## 当前 Step 4 范围
+## 当前实现
 
-- 已实现最小 ReAct 循环
-- 每轮先创建 `agent_iterations` 占位记录
-- plan LLM 输出 JSON：
-  - `thought`
-  - `selected_file_ids`
-  - `selected_tool`
-  - `tool_instruction`
-  - `reason`
-  - `should_stop`
-- 根据 `selected_tool` 调用 Tool Registry
-- 将工具原始返回写入 `agent_iterations.tool_result_json`
-- 将工具返回转换为 observation 并写入 `observations`
-- reflection LLM 输出 JSON：
-  - `reflection`
-  - `is_enough`
-  - `missing_information`
-  - `next_step_hint`
-  - `decision`
-- `decision = stop` 时结束循环并生成最终答案
+每轮执行顺序：
 
-## 每轮数据映射
+1. 创建 `agent_iterations` 占位记录。
+2. LLM 生成 plan JSON。
+3. Runner 根据 plan 构造工具输入。
+4. 调用 Tool Registry。
+5. 保存原始 tool result 到 `agent_iterations.tool_result_json`。
+6. 将 tool result 转换为 observation 并写入 `observations`。
+7. LLM 生成 reflection JSON。
+8. 保存 reflection 和 decision。
+9. 根据 decision 决定继续或停止。
 
-- `plan` 写入 `agent_iterations.plan_text`
-- `tool call` 写入 `agent_iterations.tool_name` 和 `tool_input_json`
-- `tool result` 写入 `agent_iterations.tool_result_json`
-- `observation` 写入 `observations`
-- `reflection` 写入 `agent_iterations.reflection_text`
-- `decision` 写入 `agent_iterations.decision`
+## Plan JSON
 
-## decision 值
+```json
+{
+  "thought": "...",
+  "selected_file_ids": ["..."],
+  "selected_tool": "list_file_summaries|read_text_file|analyze_excel_file|none",
+  "tool_instruction": "...",
+  "reason": "...",
+  "should_stop": false
+}
+```
 
-- `continue`
-- `stop`
+## Reflection JSON
 
-内部执行失败时，Agent Run 会标记为 `failed`，但单次工具失败会优先保存为 observation，交由 reflection 判断。
+```json
+{
+  "reflection": "...",
+  "is_enough": true,
+  "missing_information": [],
+  "next_step_hint": "...",
+  "decision": "continue|stop"
+}
+```
+
+## Decision
+
+- `continue`: 进入下一轮。
+- `stop`: 生成最终答案。
+
+如果达到 `max_iterations`，Runner 会以 `max_iterations` 作为停止原因生成最终答案。
+
+## 数据映射
+
+- `plan` -> `agent_iterations.plan_text`
+- `tool name` -> `agent_iterations.tool_name`
+- `tool input` -> `agent_iterations.tool_input_json`
+- `tool result` -> `agent_iterations.tool_result_json`
+- `observation` -> `observations`
+- `reflection` -> `agent_iterations.reflection_text`
+- `decision` -> `agent_iterations.decision`
 
 ## 非目标
 
-- 不实现 Tree-of-Thought
-- 不实现多工具并行
-- 不实现长期记忆
+- 不实现 Tree-of-Thought。
+- 不实现多工具并行。
+- 不实现长期记忆检索。

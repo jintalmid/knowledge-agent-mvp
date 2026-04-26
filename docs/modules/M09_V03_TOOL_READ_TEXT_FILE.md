@@ -2,72 +2,63 @@
 
 ## 模块目标
 
-为 Agent 提供受控文本读取能力：从任务空间中读取已解析文本文件，并调用 LLM 抽取面向问题的 `observation` 和 `evidence`。
+让 Agent 能读取已解析的文本类文件，并基于用户问题和工具指令抽取 observation 与 evidence。
 
-## 当前 Step 2 范围
+## 当前实现
 
-- 通过 Tool Registry 注册 `read_text_file`
-- 通过 `POST /api/tools/read_text_file/call` 调用
-- 输入包含 `task_id`、`file_id`、`question`、`instruction`
-- 只读取 `parsed_contents.content_type = text` 的内容
-- LLM 返回结构化 `observation`、`evidence`、`confidence`
-- LLM 调用写入 `llm_call_logs`
+- 只读取属于指定 `task_id` 的 `task_file_id`。
+- 只读取 `parsed_contents.content_type = text` 的文件。
+- 支持 txt、md、pdf 解析后的文本内容。
+- 调用 LLM 生成结构化 observation。
+- LLM 调用会写入 `llm_call_logs`，并可关联 `agent_run_id` 和 `iteration_id`。
+
+## 工具名
+
+```text
+read_text_file
+```
 
 ## 输入
 
 ```json
 {
-  "input": {
-    "task_id": "task_xxx",
-    "file_id": "tf_xxx",
-    "question": "用户问题",
-    "instruction": "请抽取与问题相关的依据"
-  }
+  "task_id": "task_xxx",
+  "file_id": "tf_xxx",
+  "question": "用户问题",
+  "instruction": "本次读取指令",
+  "agent_run_id": "arun_xxx",
+  "iteration_id": "aiter_xxx"
 }
 ```
 
-`file_id` 当前指 `task_files.id`。
+`agent_run_id` 和 `iteration_id` 可为空。
 
 ## 输出
 
 ```json
 {
-  "tool_name": "read_text_file",
-  "status": "success",
-  "output": {
-    "task_id": "task_xxx",
-    "file_id": "tf_xxx",
-    "file": {
-      "task_file_id": "tf_xxx",
-      "physical_file_id": "pf_xxx",
-      "display_name": "source.txt",
-      "parse_quality": "ok"
-    },
-    "observation": "...",
-    "evidence": ["..."],
-    "confidence": "high",
-    "llm_log_id": "llm_xxx"
-  }
+  "observation": "...",
+  "evidence": ["..."],
+  "confidence": "high|medium|low",
+  "file": {},
+  "llm_log_id": "llm_xxx"
 }
 ```
 
-## LLM Prompt 约束
+## API 调用
 
-LLM 必须：
+通过 M05：
 
-- 只基于已提供的 parsed text
-- 不编造文件中不存在的信息
-- 信息不足时在 `observation` 中说明
-- 返回 JSON，不返回 Markdown
+- `POST /api/tools/read_text_file/call`
 
-## 数据来源
+## 安全边界
 
-- `task_files`
-- `parsed_contents.text_content`
-- `llm_call_logs`
+- 不读取任意本地路径。
+- 不读取其他 task 的文件。
+- 不读取原始上传文件，只读解析后的 `text_content`。
 
 ## 非目标
 
-- 不读取任意本地路径
-- 不绕过任务文件引用
-- 不实现 Agent Runner 循环
+- 不做全文检索。
+- 不做向量召回。
+- 不做跨文件综合，跨文件综合由 Agent Runner 完成。

@@ -2,13 +2,27 @@
 
 ## 模块目标
 
-新增 Agent Runner 阶段 0 所需的三张核心表：`agent_runs`、`agent_iterations`、`observations`。
+为 Agent Runner 提供可追踪的数据模型，使每次运行、每轮迭代和每个工具观察都能落库。
 
-## 当前 Step 1 范围
+## 当前实现
 
-已新增数据表，但尚未实现 Runner API 或页面。
+新增三张核心表：
+
+- `agent_runs`
+- `agent_iterations`
+- `observations`
+
+并扩展：
+
+- `answers.agent_run_id`
+- `llm_call_logs.agent_run_id`
+- `llm_call_logs.iteration_id`
+- `excel_analysis_runs.agent_run_id`
+- `excel_analysis_runs.iteration_id`
 
 ## agent_runs
+
+字段：
 
 - `id`
 - `task_id`
@@ -26,12 +40,15 @@
 
 ## agent_iterations
 
+字段：
+
 - `id`
 - `agent_run_id`
 - `iteration_index`
 - `plan_text`
 - `tool_name`
 - `tool_input_json`
+- `tool_result_json`
 - `reflection_text`
 - `decision`
 - `llm_call_log_id`
@@ -41,6 +58,8 @@
 - `completed_at`
 
 ## observations
+
+字段：
 
 - `id`
 - `agent_run_id`
@@ -53,21 +72,16 @@
 - `error_message`
 - `created_at`
 
-## 关联现有表
+## 关系
 
-`answers` 已支持：
+- 一个 task 可以有多个 Agent Run。
+- 一个 Agent Run 有多轮 iteration。
+- 一个 iteration 可以有多个 observation。
+- 一个 answer 可以关联一个 Agent Run。
+- LLM 日志可以关联 task、Agent Run 和 iteration。
 
-- `agent_run_id`
+## 非目标
 
-用于把 Agent 最终答案关联回某次 Agent Run。非 Agent 旧问答结果可以为空。
-
-`llm_call_logs` 已支持：
-
-- `agent_run_id`
-- `iteration_id`
-
-用于把每轮 plan、reflection、decision、final answer 的 LLM 调用和 Agent Run / Iteration 对齐。非 Agent 旧调用日志可以为空。
-
-## 后续调用约定
-
-Agent Runner 每轮必须先写 `agent_iterations`，工具执行结果必须写 `observations`。
+- 不实现长期记忆。
+- 不实现跨任务 Agent Run。
+- 不实现异步队列状态机。

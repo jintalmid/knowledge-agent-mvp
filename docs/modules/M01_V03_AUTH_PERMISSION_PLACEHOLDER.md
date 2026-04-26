@@ -2,21 +2,52 @@
 
 ## 模块目标
 
-继续沿用 demo 用户上下文，为 Agent Run、工具调用和文件访问保留权限字段。
+为后续企业用户、部门、权限、安全等级提供字段和服务边界。本阶段不实现真实登录和鉴权。
 
-## 当前 Step 1 范围
+## 当前实现
 
-- 默认用户仍为 `demo_user`
-- 默认部门仍为 `demo_department`
-- 默认安全等级仍为 `normal`
-- 复杂权限、正式角色和跨部门隔离降级为未来预留
+后端使用默认用户上下文：
 
-## 后续调用约定
+- `owner_user_id = demo_user`
+- `department_id = demo_department`
+- `security_level = normal`
 
-Agent Run 创建时应写入 `owner_user_id`、`department_id`、`security_level`，工具执行时只能访问同一任务空间内的资源。
+默认上下文位于 `backend/app/core/auth.py`，任务、任务文件和 Agent Run 会继承这些字段。
+
+## 涉及字段
+
+`tasks`：
+
+- `owner_user_id`
+- `department_id`
+- `security_level`
+
+`task_files`：
+
+- `owner_user_id`
+- `department_id`
+- `security_level`
+
+`agent_runs`：
+
+- `owner_user_id`
+- `department_id`
+- `security_level`
+
+## 调用方式
+
+业务服务需要用户上下文时，应从 M01 的默认上下文获取，不应在模块内部随意写死用户字段。
+
+## 当前限制
+
+- 所有请求视为同一个 demo 用户。
+- 不校验部门隔离。
+- 不校验资源权限。
+- 不实现角色、组织、租户。
 
 ## 非目标
 
-- 不做真实登录
-- 不做组织权限审批
-- 不做多租户隔离
+- 不做登录注册。
+- 不做 OAuth / SSO。
+- 不做 RBAC / ABAC。
+- 不做多部门数据隔离。

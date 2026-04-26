@@ -2,32 +2,60 @@
 
 ## 模块目标
 
-保留统一 LLM Service、OpenAI-compatible Adapter 和 LLM 调用日志。Agent Runner、工具代码生成、反思和最终答案生成都必须走该服务。
+提供统一 LLM Service。所有摘要、工具、Agent plan、reflection、最终答案、Excel 代码生成都必须通过该服务调用模型，并写入 `llm_call_logs`。
 
-## 当前 Step 1 范围
+## 当前实现
 
-- 保留 `.env` 中 LLM 配置
-- 保留 `llm_call_logs`
-- `llm_call_logs` 支持可空关联字段 `agent_run_id` 和 `iteration_id`
-- 保留 `/settings/llm`
-- 保留 `/debug/llm-logs`
+- Provider 类型：`openai_compatible`。
+- 支持从 `.env` 读取 base URL、API key、model、timeout。
+- 每次调用记录 prompt preview、response preview、状态、错误和耗时。
+- 支持 `agent_run_id`、`iteration_id` 关联。
+- 不做无 LLM fallback。
 
-## 后续调用约定
+## 环境变量
 
-Agent Runner 每次 plan、reflection、final answer 都必须记录 `llm_call_logs.module_name`，建议使用：
+- `LLM_PROVIDER_TYPE`
+- `LLM_BASE_URL`
+- `LLM_API_KEY`
+- `LLM_MODEL`
+- `LLM_TIMEOUT_SECONDS`
 
-- `M07_AGENT_RUNNER_SERVICE`
-- `M08_REACT_ITERATION_LOOP`
-- `M10_TOOL_ANALYZE_EXCEL_FILE`
+## 数据表
 
-Agent Runner 调用 LLM 时应传入：
+`llm_call_logs`：
 
+- `id`
+- `task_id`
 - `agent_run_id`
 - `iteration_id`
+- `module_name`
+- `provider_type`
+- `model_name`
+- `prompt_preview`
+- `response_preview`
+- `status`
+- `error_message`
+- `latency_ms`
+- `created_at`
 
-非 Agent 场景可以继续为空，以兼容现有摘要、问答和 Excel 分析能力。
+## API
+
+- `GET /api/settings/llm`
+- `POST /api/settings/llm/test`
+- `GET /api/llm-logs`
+- `GET /api/llm-logs/{log_id}`
+
+## 页面
+
+- `/settings/llm`
+- `/debug/llm-logs`
+
+## 服务边界
+
+其他模块不得直接用 HTTP client 调模型，必须调用 `services/llm.py`。
 
 ## 非目标
 
-- 不增加本地 fallback
-- 不新增非 OpenAI-compatible Provider
+- 不实现多 Provider 管理 UI。
+- 不实现模型路由策略。
+- 不实现 token 计费统计。

@@ -2,23 +2,96 @@
 
 ## 模块目标
 
-保留 v0.2 中已实现的文件上传、基础解析和摘要能力，作为 Agent 工具的上下文来源。
+保留文件上传、物理文件资产、任务文件引用、基础解析和摘要上下文，为 Agent 工具提供可读取的文件基础数据。
 
-## 当前 Step 1 范围
+## 当前实现
 
-- 保留 `physical_files`
-- 保留 `task_files`
-- 保留 `parsed_contents`
-- 保留 `file_summaries`
-- 保留上传、解析、摘要 API 和页面
-- SHA256 去重复杂逻辑降级为支撑能力，不再是项目主线
+- 文件上传保存到 `backend/uploads/{sha256}/`。
+- 物理文件基于 SHA256 去重。
+- `physical_files` 和 `task_files` 解耦。
+- 支持 txt、md、pdf、csv、xlsx、xls。
+- 文本/PDF 解析为 `text_content`。
+- CSV/Excel 解析为 `excel_profile_json`。
+- 文件摘要保存到 `file_summaries`。
 
-## 后续调用约定
+## 数据表
 
-`read_text_file` 工具应优先读取 `parsed_contents.text_content`。`analyze_excel_file` 工具应读取 `parsed_contents.excel_profile_json` 和原始上传文件。
+`physical_files`：
+
+- `id`
+- `content_hash`
+- `original_filename`
+- `file_ext`
+- `mime_type`
+- `file_size`
+- `storage_path`
+- `ref_count`
+- `created_at`
+- `updated_at`
+
+`task_files`：
+
+- `id`
+- `task_id`
+- `physical_file_id`
+- `display_name`
+- `file_role`
+- `parse_status`
+- `summary_status`
+- `embedding_status`
+- `owner_user_id`
+- `department_id`
+- `security_level`
+- `created_at`
+- `updated_at`
+
+`parsed_contents`：
+
+- `id`
+- `task_file_id`
+- `physical_file_id`
+- `content_type`
+- `text_content`
+- `excel_profile_json`
+- `parse_quality`
+- `created_at`
+- `updated_at`
+
+## API
+
+文件：
+
+- `POST /api/tasks/{task_id}/files`
+- `GET /api/tasks/{task_id}/files`
+- `GET /api/task-files/{task_file_id}`
+- `DELETE /api/task-files/{task_file_id}`
+- `GET /api/physical-files/{physical_file_id}`
+
+解析：
+
+- `POST /api/task-files/{task_file_id}/parse`
+- `POST /api/tasks/{task_id}/parse-all`
+- `GET /api/task-files/{task_file_id}/parsed-content`
+
+摘要：
+
+- `POST /api/task-files/{task_file_id}/summarize`
+- `POST /api/tasks/{task_id}/summarize-all`
+- `GET /api/tasks/{task_id}/summaries`
+- `GET /api/task-files/{task_file_id}/summary`
+
+## 页面
+
+- `/tasks/{taskId}/files`
+- `/tasks/{taskId}/parsing`
+- `/tasks/{taskId}/summaries`
+
+## 降级说明
+
+复杂去重策略、清理任务、正式知识库资产生命周期在 v0.3 中降级为未来预留。
 
 ## 非目标
 
-- 不扩展正式知识库
-- 不实现 RAG 索引
-- 不扩展文件权限系统
+- 不做文件版本管理。
+- 不做远程对象存储。
+- 不做权限级文件隔离。

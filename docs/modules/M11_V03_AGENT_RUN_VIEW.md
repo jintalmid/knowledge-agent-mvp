@@ -2,37 +2,70 @@
 
 ## 模块目标
 
-展示 Agent Run 的目标、状态、每轮计划、工具调用、观察、反思、决策和最终答案。
+展示 Agent Run 的目标、状态、每轮计划、工具调用、观察、反思、决策和最终答案，并在结果页展示 Markdown 答案、来源文件和不确定性。
 
-## 当前 Step 5 范围
+## 当前实现
 
-- 已实现 Agent Run 启动页
-- 已实现 Agent Run 详情页
-- 已增强任务结果页，使 Agent 最终答案可以查看来源、缺失/不确定性提示，并复制 Markdown
+页面：
 
-## 页面
+- `/tasks/{taskId}/agent`
+- `/tasks/{taskId}/runs/{runId}`
+- `/tasks/{taskId}/results`
 
-- `/tasks/{task_id}/agent`
-- `/tasks/{task_id}/runs/{run_id}`
-- `/tasks/{task_id}/results`
+API：
 
-## 展示内容
+- `GET /api/agent-runs/{run_id}`
+- `GET /api/tasks/{task_id}/results`
+- `GET /api/answers/{answer_id}`
 
-- Agent Run 基本信息
-- 每轮 `thought`
-- 每轮 `selected_file_ids`
-- 每轮 `selected_tool`
-- 每轮 `tool_instruction`
-- 每轮 observation
-- 每轮 reflection
-- 每轮 decision
-- 最终答案 Markdown
-- used files
-- uncertainties
+## Agent 启动页
 
-最终答案应优先读取 `agent_runs.final_answer_markdown`，并可通过 `answers.agent_run_id` 找到保存到历史结果中的答案记录。
+`/tasks/{taskId}/agent` 提供：
+
+- 问题输入。
+- `max_iterations` 设置，默认 10。
+- 启动 Agent Run。
+- 成功后跳转到 `/tasks/{taskId}/runs/{runId}`。
+
+## Agent Run 详情页
+
+`/tasks/{taskId}/runs/{runId}` 展示：
+
+- run status。
+- 当前轮数和最大轮数。
+- stop reason。
+- 用户问题。
+- 每轮 thought。
+- selected files。
+- selected tool。
+- instruction。
+- observation。
+- tool result JSON。
+- reflection。
+- missing information。
+- next step hint。
+- decision。
+- final answer。
+
+## 结果页
+
+`/tasks/{taskId}/results` 展示：
+
+- 历史答案。
+- 最终 Markdown 答案。
+- used files。
+- uncertainties。
+- LLM provider/model。
+- Agent Run 详情链接。
+- 复制 Markdown。
+- 重新运行。
+
+## 复制 Markdown
+
+前端使用 `frontend/lib/clipboard.ts`。当浏览器拒绝 `navigator.clipboard.writeText()` 时，会自动尝试 textarea fallback。
 
 ## 非目标
 
-- 不替代现有文件页面
-- 不实现实时流式更新
+- 不实现实时流式输出。
+- 不实现运行中增量刷新。
+- 不实现可视化 DAG。
