@@ -1,0 +1,33 @@
+from datetime import datetime
+
+from pydantic import BaseModel
+
+
+class LlmSettingsRead(BaseModel):
+    provider_type: str | None
+    base_url_configured: bool
+    api_key_configured: bool
+    model: str | None
+    ready: bool
+
+
+class LlmTestRead(BaseModel):
+    status: str
+    response_preview: str
+    log_id: str
+
+
+class LlmCallLogRead(BaseModel):
+    id: str
+    task_id: str | None
+    agent_run_id: str | None = None
+    iteration_id: str | None = None
+    module_name: str
+    provider_type: str
+    model_name: str
+    prompt_preview: str
+    response_preview: str | None
+    status: str
+    error_message: str | None
+    latency_ms: int
+    created_at: datetime

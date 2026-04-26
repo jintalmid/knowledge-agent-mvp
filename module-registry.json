@@ -2,113 +2,113 @@
   {
     "id": "M00",
     "name": "项目基座与配置",
-    "status": "step-0",
-    "description": "Monorepo、运行配置、健康检查与模块注册表。",
-    "doc": "docs/modules/M00-project-base.md",
+    "status": "implemented",
+    "description": "保留 FastAPI、Next.js、SQLite、环境配置和模块注册表。",
+    "doc": "docs/modules/M00_V03_PROJECT_BASE.md",
     "enabled": true
   },
   {
     "id": "M01",
     "name": "身份与权限预留",
-    "status": "implemented",
-    "description": "使用默认用户上下文，为后续用户、角色、部门权限预留边界。",
-    "doc": "docs/modules/M01_AUTH_PERMISSION_PLACEHOLDER.md",
+    "status": "reserved",
+    "description": "继续使用 demo 用户上下文，复杂权限降级为未来预留。",
+    "doc": "docs/modules/M01_V03_AUTH_PERMISSION_PLACEHOLDER.md",
     "enabled": true
   },
   {
     "id": "M02",
-    "name": "任务空间",
+    "name": "Agent 任务空间",
     "status": "implemented",
-    "description": "创建和管理临时任务空间，提供任务 CRUD API 与前端页面。",
-    "doc": "docs/modules/M02_TASK_WORKSPACE.md",
+    "description": "保留现有 tasks 作为 Agent Run 的任务空间和文件上下文容器。",
+    "doc": "docs/modules/M02_V03_AGENT_WORKSPACE.md",
     "enabled": true
   },
   {
     "id": "M03",
-    "name": "物理文件资产与去重",
-    "status": "implemented",
-    "description": "基于 SHA256 管理物理文件资产并复用重复文件。",
-    "doc": "docs/modules/M03_PHYSICAL_FILE_ASSET.md",
+    "name": "文件资产与解析支撑",
+    "status": "supporting",
+    "description": "保留上传、基础解析和摘要能力；复杂去重与正式知识库能力降级为预留。",
+    "doc": "docs/modules/M03_V03_FILE_CONTEXT_SUPPORT.md",
     "enabled": true
   },
   {
     "id": "M04",
-    "name": "任务文件引用",
+    "name": "LLM Service 与调用日志",
     "status": "implemented",
-    "description": "将任务空间中的文件引用与物理文件资产解耦。",
-    "doc": "docs/modules/M04_TASK_FILE_REFERENCE.md",
+    "description": "保留统一 LLM Service、OpenAI-compatible Adapter 和 LLM 调用日志。",
+    "doc": "docs/modules/M04_V03_LLM_SERVICE_LOGGING.md",
     "enabled": true
   },
   {
     "id": "M05",
-    "name": "文件解析",
-    "status": "planned",
-    "description": "解析纯文本与 Excel 文件内容。",
-    "doc": "docs/modules/M05-file-parsing.md",
-    "enabled": false
+    "name": "Tool Registry Service",
+    "status": "implemented",
+    "description": "注册 Agent 可调用工具，提供统一工具清单和调用 API。",
+    "doc": "docs/modules/M05_V03_TOOL_REGISTRY.md",
+    "enabled": true
   },
   {
     "id": "M06",
-    "name": "LLM 摘要与标签",
-    "status": "planned",
-    "description": "通过统一 LLM Service 生成摘要和标签。",
-    "doc": "docs/modules/M06-llm-summary-tags.md",
-    "enabled": false
+    "name": "Agent Run 数据模型",
+    "status": "implemented",
+    "description": "新增 agent_runs、agent_iterations、observations 三张表。",
+    "doc": "docs/modules/M06_V03_AGENT_RUN_MODEL.md",
+    "enabled": true
   },
   {
     "id": "M07",
-    "name": "Chunk / RAG 配置预留",
-    "status": "planned",
-    "description": "为后续 Chunk、Embedding、RAG 配置预留结构。",
-    "doc": "docs/modules/M07-chunk-rag-placeholder.md",
-    "enabled": false
+    "name": "Agent Runner Service",
+    "status": "implemented",
+    "description": "执行 Agent Run 主循环，管理最多 10 轮迭代、工具调用和最终答案生成。",
+    "doc": "docs/modules/M07_V03_AGENT_RUNNER_SERVICE.md",
+    "enabled": true
   },
   {
     "id": "M08",
-    "name": "临时检索与文件筛选",
-    "status": "planned",
-    "description": "根据用户问题筛选相关任务文件。",
-    "doc": "docs/modules/M08-temporary-retrieval.md",
-    "enabled": false
+    "name": "ReAct Iteration Loop",
+    "status": "implemented",
+    "description": "每轮执行 plan -> tool call -> observation -> reflection -> decision。",
+    "doc": "docs/modules/M08_V03_REACT_ITERATION_LOOP.md",
+    "enabled": true
   },
   {
     "id": "M09",
-    "name": "文本问答与临时处理",
-    "status": "planned",
-    "description": "基于筛选出的文本文件调用 LLM 回答问题。",
-    "doc": "docs/modules/M09-text-qa.md",
-    "enabled": false
+    "name": "read_text_file 工具",
+    "status": "implemented",
+    "description": "基于已解析文本内容调用 LLM 抽取 observation 和 evidence。",
+    "doc": "docs/modules/M09_V03_TOOL_READ_TEXT_FILE.md",
+    "enabled": true
   },
   {
     "id": "M10",
-    "name": "Excel 分析与受限代码沙箱",
-    "status": "planned",
-    "description": "由 LLM 生成 Python 分析代码，经安全检查后受限执行。",
-    "doc": "docs/modules/M10-excel-analysis-sandbox.md",
-    "enabled": false
+    "name": "analyze_excel_file 工具",
+    "status": "implemented",
+    "description": "复用现有 Excel 代码生成与受限执行能力，已包装为 Agent 工具。",
+    "doc": "docs/modules/M10_V03_TOOL_ANALYZE_EXCEL_FILE.md",
+    "enabled": true
   },
   {
     "id": "M11",
-    "name": "结果与来源展示",
-    "status": "planned",
-    "description": "展示 Markdown 结果、来源文件和中间信息。",
-    "doc": "docs/modules/M11-results-sources.md",
-    "enabled": false
+    "name": "Agent Run 详情与结果展示",
+    "status": "implemented",
+    "description": "展示 Agent Run 每轮过程、工具观察、反思、决策和最终答案。",
+    "doc": "docs/modules/M11_V03_AGENT_RUN_VIEW.md",
+    "enabled": true
   },
   {
     "id": "M12",
-    "name": "调度与能力盘点",
+    "name": "v0.3 能力盘点",
     "status": "planned",
-    "description": "盘点阶段 0 能力并预留轻量调度入口。",
-    "doc": "docs/modules/M12-orchestration-capability-map.md",
+    "description": "将原阶段 0 能力检查迁移为 Agent Runner 能力盘点。",
+    "doc": "docs/modules/M12_V03_AGENT_CAPABILITY_CHECK.md",
     "enabled": false
   },
   {
     "id": "M13",
-    "name": "LLM 调用日志与 Debug",
-    "status": "planned",
-    "description": "记录所有 LLM 调用日志并提供 Debug 查询能力。",
-    "doc": "docs/modules/M13-llm-logs-debug.md",
-    "enabled": false
+    "name": "Debug 与历史日志",
+    "status": "implemented",
+    "description": "保留 LLM 调用日志页面，并为 Agent Run 调试信息预留入口。",
+    "doc": "docs/modules/M13_V03_DEBUG_LOGS.md",
+    "enabled": true
   }
 ]

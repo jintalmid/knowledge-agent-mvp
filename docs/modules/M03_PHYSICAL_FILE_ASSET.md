@@ -8,7 +8,7 @@
 
 - SQLite 表：`physical_files`
 - 文件存储目录：`backend/uploads/{sha256}/`
-- 支持文件类型：`txt`、`md`、`csv`、`xlsx`、`xls`
+- 支持文件类型：`txt`、`md`、`pdf`、`csv`、`xlsx`、`xls`
 - 新文件保存到本地 uploads，重复文件只复用已有记录
 - `ref_count` 记录当前任务文件引用数量
 

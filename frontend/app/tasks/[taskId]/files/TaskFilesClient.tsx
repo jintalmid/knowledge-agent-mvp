@@ -97,7 +97,7 @@ export default function TaskFilesClient({ taskId }: { taskId: string }) {
           <label className="grid min-w-72 gap-1.5">
             <span className="text-sm font-medium text-slate-700">文件</span>
             <input
-              accept=".txt,.md,.csv,.xlsx,.xls"
+              accept=".txt,.md,.pdf,.csv,.xlsx,.xls"
               className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
               onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
               type="file"
@@ -111,7 +111,7 @@ export default function TaskFilesClient({ taskId }: { taskId: string }) {
             {isUploading ? "上传中" : "上传"}
           </button>
         </form>
-        <p className="mt-3 text-xs text-slate-500">支持 txt、md、csv、xlsx、xls。当前只建立文件资产与引用，不执行解析。</p>
+        <p className="mt-3 text-xs text-slate-500">支持 txt、md、pdf、csv、xlsx、xls。当前只建立文件资产与引用，不执行解析。</p>
       </section>
 
       <section>

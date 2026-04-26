@@ -5,17 +5,24 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { deleteTask, getTask, Task, TaskStatus, updateTask } from "@/lib/api";
 
-const nextModuleEntries = [
-  { label: "M03 物理文件资产与去重", implemented: true },
-  { label: "M04 任务文件引用", implemented: true },
-  { label: "M05 文件解析", implemented: false },
-  { label: "M06 LLM 摘要与标签", implemented: false },
-  { label: "M07 Chunk / RAG 配置预留", implemented: false },
-  { label: "M08 临时检索与文件筛选", implemented: false },
-  { label: "M09 文本问答与临时处理", implemented: false },
-  { label: "M10 Excel 分析与受限代码沙箱", implemented: false },
-  { label: "M11 结果与来源展示", implemented: false },
-  { label: "M13 LLM 调用日志与 Debug", implemented: false },
+type ModuleEntry = {
+  label: string;
+  implemented: boolean;
+  href?: string;
+};
+
+const nextModuleEntries: ModuleEntry[] = [
+  { label: "M03 物理文件资产与去重", implemented: true, href: "files" },
+  { label: "M04 任务文件引用", implemented: true, href: "files" },
+  { label: "M05 文件解析", implemented: true, href: "parsing" },
+  { label: "M06 LLM 摘要与标签", implemented: true, href: "summaries" },
+  { label: "M07 Chunk / RAG 配置预留", implemented: true, href: "retrieval" },
+  { label: "M08 临时检索与文件筛选", implemented: true, href: "retrieval" },
+  { label: "M09 文本问答与临时处理", implemented: true, href: "ask" },
+  { label: "M10 Excel 分析与受限代码沙箱", implemented: true, href: "excel" },
+  { label: "v0.3 Agent Runner", implemented: true, href: "agent" },
+  { label: "M11 结果与来源展示", implemented: true, href: "results" },
+  { label: "M13 LLM 调用日志与 Debug", implemented: true, href: "/debug/llm-logs" },
 ];
 
 function formatDate(value: string) {
@@ -242,8 +249,11 @@ export default function TaskDetailClient({ taskId }: { taskId: string }) {
           {nextModuleEntries.map((entry) => (
             <div key={entry.label} className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between gap-3">
-                {entry.implemented ? (
-                  <Link className="text-sm font-medium text-slate-900 hover:underline" href={`/tasks/${taskId}/files`}>
+                {entry.implemented && entry.href ? (
+                  <Link
+                    className="text-sm font-medium text-slate-900 hover:underline"
+                    href={entry.href.startsWith("/") ? entry.href : `/tasks/${taskId}/${entry.href}`}
+                  >
                     {entry.label}
                   </Link>
                 ) : (

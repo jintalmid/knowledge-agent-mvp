@@ -26,3 +26,14 @@ uvicorn app.main:app --reload --port 8000
 - `GET /api/task-files/{task_file_id}`
 - `DELETE /api/task-files/{task_file_id}`
 - `GET /api/physical-files/{physical_file_id}`
+- `POST /api/task-files/{task_file_id}/parse`
+- `POST /api/tasks/{task_id}/parse-all`
+- `GET /api/task-files/{task_file_id}/parsed-content`
+- `GET /api/settings/llm`
+- `POST /api/settings/llm/test`
+- `POST /api/task-files/{task_file_id}/summarize`
+- `POST /api/tasks/{task_id}/summarize-all`
+- `GET /api/tasks/{task_id}/summaries`
+- `GET /api/task-files/{task_file_id}/summary`
+- `GET /api/llm-logs`
+- `GET /api/llm-logs/{log_id}`

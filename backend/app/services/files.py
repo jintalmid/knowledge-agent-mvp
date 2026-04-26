@@ -12,7 +12,7 @@ from app.models.file import FileRole, PipelineStatus
 from app.schemas.file import PhysicalFileRead, TaskFileRead
 from app.services.tasks import get_task
 
-ALLOWED_FILE_EXTENSIONS = {".txt", ".md", ".csv", ".xlsx", ".xls"}
+ALLOWED_FILE_EXTENSIONS = {".txt", ".md", ".pdf", ".csv", ".xlsx", ".xls"}
 
 
 def _now_iso() -> str:
