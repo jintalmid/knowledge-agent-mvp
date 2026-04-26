@@ -7,7 +7,7 @@ FastAPI 后端负责 `knowledge-agent-mvp` 的数据模型、文件处理、LLM 
 - 初始化和迁移 SQLite 表。
 - 提供任务空间 CRUD。
 - 管理上传文件、物理文件资产和任务文件引用。
-- 解析文本、PDF、CSV、Excel。
+- 上传成功后自动调用解析服务解析文本、PDF、CSV、Excel。
 - 调用统一 LLM Service 生成摘要、工具 observation、Excel 分析代码、Agent plan/reflection/final answer。
 - 记录所有 LLM 调用日志。
 - 注册并执行 Agent 工具。
@@ -151,6 +151,7 @@ LLM：
 - `services/parsing.py`: 文件解析。
 - `services/summaries.py`: 文件摘要。
 - `services/files.py`: 文件上传、SHA256 去重和引用。
+- `services/files.py` 上传成功后只负责编排调用 `services/parsing.py`，不内联解析逻辑。
 - `services/qa.py`: v0.2 文本问答能力，当前作为兼容能力保留。
 
 ## 验证

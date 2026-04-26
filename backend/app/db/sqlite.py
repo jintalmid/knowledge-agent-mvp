@@ -78,6 +78,7 @@ def init_db() -> None:
                 display_name TEXT NOT NULL,
                 file_role TEXT NOT NULL,
                 parse_status TEXT NOT NULL,
+                parse_error TEXT,
                 summary_status TEXT NOT NULL,
                 embedding_status TEXT NOT NULL,
                 owner_user_id TEXT NOT NULL,
@@ -90,6 +91,7 @@ def init_db() -> None:
             )
             """
         )
+        _ensure_column(connection, "task_files", "parse_error", "TEXT")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_task_files_task_id ON task_files(task_id)")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_task_files_physical_file_id ON task_files(physical_file_id)")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_physical_files_content_hash ON physical_files(content_hash)")

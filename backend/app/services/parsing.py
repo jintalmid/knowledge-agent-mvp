@@ -49,10 +49,28 @@ def _get_task_file_parse_source(connection: Connection, task_file_id: str) -> Ro
     ).fetchone()
 
 
-def _set_parse_status(connection: Connection, task_file_id: str, parse_status: str) -> None:
+def _preview_error(value: str, limit: int = 500) -> str:
+    compact = " ".join(value.split())
+    if len(compact) <= limit:
+        return compact
+    return f"{compact[:limit]}..."
+
+
+def _error_detail(exc: HTTPException | Exception) -> str:
+    if isinstance(exc, HTTPException):
+        return _preview_error(str(exc.detail))
+    return _preview_error(str(exc))
+
+
+def set_parse_status(
+    connection: Connection,
+    task_file_id: str,
+    parse_status: str,
+    parse_error: str | None = None,
+) -> None:
     connection.execute(
-        "UPDATE task_files SET parse_status = ?, updated_at = ? WHERE id = ?",
-        (parse_status, _now_iso(), task_file_id),
+        "UPDATE task_files SET parse_status = ?, parse_error = ?, updated_at = ? WHERE id = ?",
+        (parse_status, parse_error, _now_iso(), task_file_id),
     )
 
 
@@ -264,10 +282,10 @@ def parse_task_file(connection: Connection, task_file_id: str) -> ParsedContentR
     path = Path(source["storage_path"])
     file_ext = source["file_ext"].lower()
     if not path.exists():
-        _set_parse_status(connection, task_file_id, "failed")
+        set_parse_status(connection, task_file_id, "failed", "stored file not found")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="stored file not found")
 
-    _set_parse_status(connection, task_file_id, "parsing")
+    set_parse_status(connection, task_file_id, "parsing", None)
     try:
         if file_ext in {"txt", "md"}:
             parsed_content = _save_parsed_content(
@@ -321,14 +339,14 @@ def parse_task_file(connection: Connection, task_file_id: str) -> ParsedContentR
             )
         else:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="unsupported file type")
-    except HTTPException:
-        _set_parse_status(connection, task_file_id, "failed")
+    except HTTPException as exc:
+        set_parse_status(connection, task_file_id, "failed", _error_detail(exc))
         raise
     except Exception as exc:
-        _set_parse_status(connection, task_file_id, "failed")
+        set_parse_status(connection, task_file_id, "failed", f"parse failed: {_error_detail(exc)}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"parse failed: {exc}") from exc
 
-    _set_parse_status(connection, task_file_id, "parsed")
+    set_parse_status(connection, task_file_id, "parsed", None)
     return parsed_content
 
 

@@ -5,7 +5,7 @@
 项目目标不是做完整知识库产品，而是验证一个企业知识智能平台的最小闭环：
 
 1. 创建任务空间。
-2. 上传并解析文件。
+2. 上传文件并自动解析。
 3. 生成文件摘要。
 4. 通过统一 LLM Service 调用模型并记录日志。
 5. 由 Agent Runner 按 `plan -> tool call -> observation -> reflection -> decision` 循环执行。
@@ -117,8 +117,8 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 npm run dev
 - `/modules`: 模块注册表
 - `/tasks`: 任务列表
 - `/tasks/{taskId}`: 任务详情
-- `/tasks/{taskId}/files`: 文件上传与任务文件引用
-- `/tasks/{taskId}/parsing`: 文件解析
+- `/tasks/{taskId}/files`: 文件上传、自动解析状态与任务文件引用
+- `/tasks/{taskId}/parsing`: 文件解析 Debug、批量重试和 profile/text preview
 - `/tasks/{taskId}/summaries`: LLM 摘要与标签
 - `/tasks/{taskId}/agent`: 启动 Agent Run
 - `/tasks/{taskId}/runs/{runId}`: Agent Run 详情

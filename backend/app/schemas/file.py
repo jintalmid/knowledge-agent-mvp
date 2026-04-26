@@ -23,6 +23,7 @@ class TaskFileRead(BaseModel):
     display_name: str
     file_role: str
     parse_status: str
+    parse_error: str | None = None
     summary_status: str
     embedding_status: str
     owner_user_id: str

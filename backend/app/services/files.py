@@ -10,6 +10,7 @@ from app.core.auth import CurrentUser
 from app.core.config import get_settings
 from app.models.file import FileRole, PipelineStatus
 from app.schemas.file import PhysicalFileRead, TaskFileRead
+from app.services import parsing as parsing_service
 from app.services.tasks import get_task
 
 ALLOWED_FILE_EXTENSIONS = {".txt", ".md", ".pdf", ".csv", ".xlsx", ".xls"}
@@ -141,6 +142,7 @@ async def create_task_file(
             display_name,
             file_role,
             parse_status,
+            parse_error,
             summary_status,
             embedding_status,
             owner_user_id,
@@ -149,7 +151,7 @@ async def create_task_file(
             created_at,
             updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             task_file_id,
@@ -157,7 +159,8 @@ async def create_task_file(
             physical_file_id,
             original_filename,
             FileRole.SOURCE.value,
-            PipelineStatus.NOT_STARTED.value,
+            PipelineStatus.PENDING.value,
+            None,
             PipelineStatus.NOT_STARTED.value,
             PipelineStatus.NOT_STARTED.value,
             current_user.owner_user_id,
@@ -178,7 +181,18 @@ async def create_task_file(
     task_file = get_task_file(connection, task_file_id)
     if task_file is None:
         raise HTTPException(status_code=500, detail="failed to create task file")
-    return task_file
+
+    try:
+        parsing_service.parse_task_file(connection, task_file_id)
+    except HTTPException as exc:
+        parsing_service.set_parse_status(connection, task_file_id, "failed", str(exc.detail))
+    except Exception as exc:
+        parsing_service.set_parse_status(connection, task_file_id, "failed", f"parse failed: {exc}")
+
+    refreshed_task_file = get_task_file(connection, task_file_id)
+    if refreshed_task_file is None:
+        raise HTTPException(status_code=500, detail="failed to load task file after parse")
+    return refreshed_task_file
 
 
 def list_task_files(connection: Connection, task_id: str) -> list[TaskFileRead] | None:

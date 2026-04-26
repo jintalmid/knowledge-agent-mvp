@@ -10,6 +10,8 @@
 - 物理文件基于 SHA256 去重。
 - `physical_files` 和 `task_files` 解耦。
 - 支持 txt、md、pdf、csv、xlsx、xls。
+- 上传创建 task_file 后自动调用解析服务。
+- 自动解析失败不会导致上传接口失败；文件保留，`parse_status = failed`，`parse_error` 记录简短错误。
 - 文本/PDF 解析为 `text_content`。
 - CSV/Excel 解析为 `excel_profile_json`。
 - 文件摘要保存到 `file_summaries`。
@@ -37,6 +39,7 @@
 - `display_name`
 - `file_role`
 - `parse_status`
+- `parse_error`
 - `summary_status`
 - `embedding_status`
 - `owner_user_id`
@@ -85,6 +88,8 @@
 - `/tasks/{taskId}/files`
 - `/tasks/{taskId}/parsing`
 - `/tasks/{taskId}/summaries`
+
+普通主流程从 `/tasks/{taskId}/files` 上传后即可使用文件。`/tasks/{taskId}/parsing` 保留为高级页面，用于 Debug、批量重试、查看文本预览和 Excel profile。
 
 ## 降级说明
 

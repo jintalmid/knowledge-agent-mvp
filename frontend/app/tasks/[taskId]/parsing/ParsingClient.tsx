@@ -180,21 +180,21 @@ export default function ParsingClient({ taskId }: { taskId: string }) {
               </div>
 
               {parsed?.text_content ? (
-                <section className="mt-4">
-                  <h3 className="mb-2 text-sm font-semibold text-slate-950">文本预览</h3>
+                <details className="mt-4 rounded-md border border-slate-100 bg-slate-50 p-3">
+                  <summary className="text-sm font-semibold text-slate-950">文本预览</summary>
                   <pre className="max-h-96 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-6 text-slate-100">
                     {previewText(parsed.text_content)}
                   </pre>
-                </section>
+                </details>
               ) : null}
 
               {parsed?.excel_profile_json ? (
-                <section className="mt-4">
-                  <h3 className="mb-2 text-sm font-semibold text-slate-950">Excel profile 预览</h3>
+                <details className="mt-4 rounded-md border border-slate-100 bg-slate-50 p-3">
+                  <summary className="text-sm font-semibold text-slate-950">Excel profile 预览</summary>
                   <pre className="max-h-96 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-6 text-slate-100">
                     {JSON.stringify(parsed.excel_profile_json, null, 2)}
                   </pre>
-                </section>
+                </details>
               ) : null}
             </article>
           );

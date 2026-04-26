@@ -47,6 +47,7 @@ export type TaskFile = {
   display_name: string;
   file_role: string;
   parse_status: string;
+  parse_error: string | null;
   summary_status: string;
   embedding_status: string;
   owner_user_id: string;

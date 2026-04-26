@@ -1,0 +1,134 @@
+import asyncio
+from io import BytesIO
+
+import pytest
+from fastapi import HTTPException, UploadFile
+
+from app.core.auth import CurrentUser
+from app.core.config import get_settings
+from app.db.sqlite import db_session, init_db
+from app.schemas.task import TaskCreate
+from app.services import files as file_service
+from app.services import parsing as parsing_service
+from app.services import tasks as task_service
+
+
+@pytest.fixture()
+def workspace(tmp_path, monkeypatch):
+    monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "test.sqlite3"))
+    monkeypatch.setenv("UPLOADS_DIR", str(tmp_path / "uploads"))
+    get_settings.cache_clear()
+    init_db()
+    yield tmp_path
+    get_settings.cache_clear()
+
+
+def _upload(filename: str, content: bytes, content_type: str = "text/plain") -> UploadFile:
+    return UploadFile(file=BytesIO(content), filename=filename, headers={"content-type": content_type})
+
+
+def _create_task(connection) -> str:
+    task = task_service.create_task(
+        connection,
+        TaskCreate(name="auto parse test", description=""),
+        CurrentUser(),
+    )
+    return task.id
+
+
+def test_upload_success_auto_parse_success(workspace):
+    with db_session() as connection:
+        task_id = _create_task(connection)
+        task_file = asyncio.run(
+            file_service.create_task_file(
+                connection,
+                task_id,
+                _upload("notes.txt", "hello auto parse".encode("utf-8")),
+                CurrentUser(),
+            )
+        )
+
+        assert task_file.parse_status == "parsed"
+        assert task_file.parse_error is None
+
+        parsed = parsing_service.get_parsed_content(connection, task_file.id)
+        assert parsed is not None
+        assert parsed.content_type == "text"
+        assert parsed.text_content == "hello auto parse"
+
+
+def test_upload_success_parse_failure_keeps_file(workspace, monkeypatch):
+    def fail_parse(connection, task_file_id):
+        raise HTTPException(status_code=400, detail="simulated parse failure")
+
+    monkeypatch.setattr(file_service.parsing_service, "parse_task_file", fail_parse)
+
+    with db_session() as connection:
+        task_id = _create_task(connection)
+        task_file = asyncio.run(
+            file_service.create_task_file(
+                connection,
+                task_id,
+                _upload("notes.txt", "kept even if parse fails".encode("utf-8")),
+                CurrentUser(),
+            )
+        )
+
+        assert task_file.parse_status == "failed"
+        assert task_file.parse_error == "simulated parse failure"
+        assert file_service.get_task_file(connection, task_file.id) is not None
+        assert file_service.get_physical_file(connection, task_file.physical_file_id) is not None
+        assert parsing_service.get_parsed_content(connection, task_file.id) is None
+
+
+def test_upload_failure_does_not_trigger_parse(workspace, monkeypatch):
+    calls = {"count": 0}
+
+    def count_parse(connection, task_file_id):
+        calls["count"] += 1
+
+    monkeypatch.setattr(file_service.parsing_service, "parse_task_file", count_parse)
+
+    with db_session() as connection:
+        task_id = _create_task(connection)
+        with pytest.raises(HTTPException) as exc_info:
+            asyncio.run(
+                file_service.create_task_file(
+                    connection,
+                    task_id,
+                    _upload("blocked.exe", b"not allowed", "application/octet-stream"),
+                    CurrentUser(),
+                )
+            )
+
+        assert exc_info.value.status_code == 400
+        assert calls["count"] == 0
+
+
+def test_manual_retry_parse_still_works_after_auto_parse_failure(workspace, monkeypatch):
+    def fail_parse(connection, task_file_id):
+        raise HTTPException(status_code=400, detail="first parse failed")
+
+    with db_session() as connection:
+        task_id = _create_task(connection)
+        with monkeypatch.context() as patch_context:
+            patch_context.setattr(file_service.parsing_service, "parse_task_file", fail_parse)
+            task_file = asyncio.run(
+                file_service.create_task_file(
+                    connection,
+                    task_id,
+                    _upload("retry.md", "# Retry works".encode("utf-8")),
+                    CurrentUser(),
+                )
+            )
+
+        assert task_file.parse_status == "failed"
+
+        parsed = parsing_service.parse_task_file(connection, task_file.id)
+        refreshed = file_service.get_task_file(connection, task_file.id)
+
+        assert parsed.content_type == "text"
+        assert parsed.text_content == "# Retry works"
+        assert refreshed is not None
+        assert refreshed.parse_status == "parsed"
+        assert refreshed.parse_error is None

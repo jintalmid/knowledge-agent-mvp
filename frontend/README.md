@@ -39,8 +39,8 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 npm run dev
 - `/debug/llm-logs`: LLM 调用日志。
 - `/tasks`: 任务列表。
 - `/tasks/[taskId]`: 任务详情和模块入口。
-- `/tasks/[taskId]/files`: 文件上传、引用和去重状态。
-- `/tasks/[taskId]/parsing`: 文件解析。
+- `/tasks/[taskId]/files`: 文件上传、自动解析状态、失败提示、重试入口、引用和去重状态。
+- `/tasks/[taskId]/parsing`: 文件解析 Debug、批量重试、profile 和 text preview。
 - `/tasks/[taskId]/summaries`: 文件摘要与标签。
 - `/tasks/[taskId]/retrieval`: v0.2 临时检索兼容页面。
 - `/tasks/[taskId]/ask`: v0.2 文本问答兼容页面。

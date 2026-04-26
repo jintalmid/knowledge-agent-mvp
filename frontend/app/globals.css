@@ -6,7 +6,64 @@
   color-scheme: light;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 body {
-  background: #f8fafc;
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(248, 250, 252, 0.92)),
+    #f8fafc;
   color: #111827;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+summary {
+  cursor: pointer;
+}
+
+summary::marker {
+  color: #64748b;
+}
+
+::selection {
+  background: #dbeafe;
+  color: #0f172a;
+}
+
+a,
+button,
+input,
+textarea,
+select {
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+button:active,
+a:active {
+  transform: translateY(1px);
+}
+
+input,
+textarea,
+select {
+  background: #ffffff;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+}
+
+pre {
+  border: 1px solid rgba(148, 163, 184, 0.18);
 }

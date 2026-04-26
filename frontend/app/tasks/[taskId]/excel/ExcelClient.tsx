@@ -237,41 +237,41 @@ export default function ExcelClient({ taskId }: { taskId: string }) {
           </article>
 
           <section className="grid gap-4 lg:grid-cols-2">
-            <article className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-950">generated_code</h2>
+            <details className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+              <summary className="text-lg font-semibold text-slate-950">generated_code</summary>
               <pre className="mt-3 max-h-96 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-6 text-slate-100">
                 {result.run.generated_code}
               </pre>
-            </article>
-            <article className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-950">final_code</h2>
+            </details>
+            <details className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+              <summary className="text-lg font-semibold text-slate-950">final_code</summary>
               <pre className="mt-3 max-h-96 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-6 text-slate-100">
                 {result.run.final_code}
               </pre>
-            </article>
+            </details>
           </section>
 
           <section className="grid gap-4 lg:grid-cols-2">
-            <article className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-950">stdout</h2>
+            <details className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+              <summary className="text-lg font-semibold text-slate-950">stdout</summary>
               <pre className="mt-3 max-h-72 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-6 text-slate-100">
                 {result.run.stdout || ""}
               </pre>
-            </article>
-            <article className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-950">stderr</h2>
+            </details>
+            <details className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+              <summary className="text-lg font-semibold text-slate-950">stderr</summary>
               <pre className="mt-3 max-h-72 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-6 text-slate-100">
                 {result.run.stderr || result.run.first_error || ""}
               </pre>
-            </article>
+            </details>
           </section>
 
-          <article className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-950">result_json</h2>
+          <details className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+            <summary className="text-lg font-semibold text-slate-950">result_json</summary>
             <pre className="mt-3 max-h-96 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-6 text-slate-100">
               {JSON.stringify(result.run.result_json, null, 2)}
             </pre>
-          </article>
+          </details>
         </section>
       ) : null}
     </main>

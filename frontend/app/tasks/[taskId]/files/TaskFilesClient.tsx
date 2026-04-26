@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { deleteTaskFile, getTask, getTaskFiles, Task, TaskFile, uploadTaskFile } from "@/lib/api";
+import { deleteTaskFile, getTask, getTaskFiles, parseTaskFile, Task, TaskFile, uploadTaskFile } from "@/lib/api";
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) {
@@ -14,12 +14,26 @@ function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function parseStatusClass(status: string) {
+  if (status === "parsed") {
+    return "bg-emerald-50 text-emerald-700";
+  }
+  if (status === "failed") {
+    return "bg-red-50 text-red-700";
+  }
+  if (status === "parsing") {
+    return "bg-amber-50 text-amber-700";
+  }
+  return "bg-slate-100 text-slate-600";
+}
+
 export default function TaskFilesClient({ taskId }: { taskId: string }) {
   const [task, setTask] = useState<Task | null>(null);
   const [taskFiles, setTaskFiles] = useState<TaskFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [retryingTaskFileId, setRetryingTaskFileId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
@@ -72,6 +86,20 @@ export default function TaskFilesClient({ taskId }: { taskId: string }) {
     }
   }
 
+  async function onRetryParse(taskFileId: string) {
+    setRetryingTaskFileId(taskFileId);
+    setError(null);
+    try {
+      await parseTaskFile(taskFileId);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "重试解析失败");
+      await refresh();
+    } finally {
+      setRetryingTaskFileId(null);
+    }
+  }
+
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-10">
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
@@ -111,7 +139,9 @@ export default function TaskFilesClient({ taskId }: { taskId: string }) {
             {isUploading ? "上传中" : "上传"}
           </button>
         </form>
-        <p className="mt-3 text-xs text-slate-500">支持 txt、md、pdf、csv、xlsx、xls。当前只建立文件资产与引用，不执行解析。</p>
+        <p className="mt-3 text-xs text-slate-500">
+          支持 txt、md、pdf、csv、xlsx、xls。上传成功后会自动解析；解析失败时文件仍会保留，可在列表中重试。
+        </p>
       </section>
 
       <section>
@@ -147,42 +177,66 @@ export default function TaskFilesClient({ taskId }: { taskId: string }) {
                     >
                       {taskFile.reused_existing_file ? "复用已有文件" : "新物理文件"}
                     </span>
+                    <span className={`rounded-md px-2.5 py-1 font-mono text-xs font-medium ${parseStatusClass(taskFile.parse_status)}`}>
+                      {taskFile.parse_status}
+                    </span>
                   </div>
 
-                  <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
-                    <div>
-                      <dt className="text-xs font-medium text-slate-500">parse_status</dt>
-                      <dd className="mt-1 font-mono text-slate-900">{taskFile.parse_status}</dd>
+                  <details className="mt-4 rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
+                    <summary className="text-sm font-medium text-slate-700">详情</summary>
+                    <dl className="mt-3 grid gap-3 text-sm md:grid-cols-3">
+                      <div>
+                        <dt className="text-xs font-medium text-slate-500">parse_status</dt>
+                        <dd className="mt-1 font-mono text-slate-900">{taskFile.parse_status}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-medium text-slate-500">summary_status</dt>
+                        <dd className="mt-1 font-mono text-slate-900">{taskFile.summary_status}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-medium text-slate-500">embedding_status</dt>
+                        <dd className="mt-1 font-mono text-slate-900">{taskFile.embedding_status}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-medium text-slate-500">physical_file_id</dt>
+                        <dd className="mt-1 break-all font-mono text-slate-900">{taskFile.physical_file_id}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-medium text-slate-500">ref_count</dt>
+                        <dd className="mt-1 font-mono text-slate-900">{taskFile.ref_count}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-medium text-slate-500">文件大小</dt>
+                        <dd className="mt-1 text-slate-900">{formatBytes(taskFile.file_size)}</dd>
+                      </div>
+                    </dl>
+                  </details>
+                  {taskFile.parse_status === "failed" ? (
+                    <div className="mt-4 rounded-md border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
+                      <p className="font-medium">解析失败</p>
+                      <p className="mt-1 line-clamp-2">{taskFile.parse_error || "未记录错误详情"}</p>
                     </div>
-                    <div>
-                      <dt className="text-xs font-medium text-slate-500">summary_status</dt>
-                      <dd className="mt-1 font-mono text-slate-900">{taskFile.summary_status}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-medium text-slate-500">embedding_status</dt>
-                      <dd className="mt-1 font-mono text-slate-900">{taskFile.embedding_status}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-medium text-slate-500">physical_file_id</dt>
-                      <dd className="mt-1 break-all font-mono text-slate-900">{taskFile.physical_file_id}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-medium text-slate-500">ref_count</dt>
-                      <dd className="mt-1 font-mono text-slate-900">{taskFile.ref_count}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs font-medium text-slate-500">文件大小</dt>
-                      <dd className="mt-1 text-slate-900">{formatBytes(taskFile.file_size)}</dd>
-                    </div>
-                  </dl>
+                  ) : null}
                 </div>
-                <button
-                  className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
-                  onClick={() => onDelete(taskFile.id)}
-                  type="button"
-                >
-                  删除引用
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  {taskFile.parse_status === "failed" ? (
+                    <button
+                      className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                      disabled={retryingTaskFileId === taskFile.id}
+                      onClick={() => onRetryParse(taskFile.id)}
+                      type="button"
+                    >
+                      {retryingTaskFileId === taskFile.id ? "解析中" : "重试解析"}
+                    </button>
+                  ) : null}
+                  <button
+                    className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+                    onClick={() => onDelete(taskFile.id)}
+                    type="button"
+                  >
+                    删除引用
+                  </button>
+                </div>
               </div>
             </article>
           ))}
