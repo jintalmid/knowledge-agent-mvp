@@ -42,6 +42,7 @@ export default function TaskDetailClient({ taskId }: { taskId: string }) {
   const [templateId, setTemplateId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function refreshTask() {
@@ -130,7 +131,7 @@ export default function TaskDetailClient({ taskId }: { taskId: string }) {
             返回任务列表
           </Link>
           <h1 className="mt-3 text-3xl font-semibold text-slate-950">{task.name}</h1>
-          <p className="mt-3 font-mono text-xs text-slate-500">{task.id}</p>
+          {task.description ? <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{task.description}</p> : null}
         </div>
         <div className="flex flex-wrap gap-3">
           <Link
@@ -140,11 +141,11 @@ export default function TaskDetailClient({ taskId }: { taskId: string }) {
             管理文件
           </Link>
           <button
-            className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
-            onClick={onDelete}
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white"
+            onClick={() => setShowDetails((current) => !current)}
             type="button"
           >
-            删除任务
+            {showDetails ? "收起详情" : "详情"}
           </button>
         </div>
       </header>
@@ -153,32 +154,47 @@ export default function TaskDetailClient({ taskId }: { taskId: string }) {
         <div className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       ) : null}
 
-      <section className="mb-8 grid gap-4 rounded-md border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-3">
-        <div>
-          <p className="text-xs font-medium text-slate-500">默认用户</p>
-          <p className="mt-1 font-mono text-sm text-slate-900">{task.owner_user_id}</p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-slate-500">默认部门</p>
-          <p className="mt-1 font-mono text-sm text-slate-900">{task.department_id}</p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-slate-500">安全等级</p>
-          <p className="mt-1 font-mono text-sm text-slate-900">{task.security_level}</p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-slate-500">迭代次数</p>
-          <p className="mt-1 font-mono text-sm text-slate-900">{task.iteration_count}</p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-slate-500">创建时间</p>
-          <p className="mt-1 text-sm text-slate-900">{formatDate(task.created_at)}</p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-slate-500">更新时间</p>
-          <p className="mt-1 text-sm text-slate-900">{formatDate(task.updated_at)}</p>
-        </div>
-      </section>
+      {showDetails ? (
+        <section className="mb-8 grid gap-4 rounded-md border border-slate-200 bg-white p-5 shadow-sm md:grid-cols-3">
+          <div>
+            <p className="text-xs font-medium text-slate-500">任务 ID</p>
+            <p className="mt-1 break-all font-mono text-sm text-slate-900">{task.id}</p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500">默认用户</p>
+            <p className="mt-1 font-mono text-sm text-slate-900">{task.owner_user_id}</p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500">默认部门</p>
+            <p className="mt-1 font-mono text-sm text-slate-900">{task.department_id}</p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500">安全等级</p>
+            <p className="mt-1 font-mono text-sm text-slate-900">{task.security_level}</p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500">迭代次数</p>
+            <p className="mt-1 font-mono text-sm text-slate-900">{task.iteration_count}</p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500">创建时间</p>
+            <p className="mt-1 text-sm text-slate-900">{formatDate(task.created_at)}</p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-slate-500">更新时间</p>
+            <p className="mt-1 text-sm text-slate-900">{formatDate(task.updated_at)}</p>
+          </div>
+          <div className="md:col-span-3">
+            <button
+              className="rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+              onClick={onDelete}
+              type="button"
+            >
+              删除任务
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="mb-8 rounded-md border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-950">任务信息</h2>

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
+import { getTask, Task } from "@/lib/api";
 
 type NavItem = {
   href: string;
@@ -63,7 +64,37 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
 export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const taskId = taskIdFromPath(pathname);
+  const [currentTask, setCurrentTask] = useState<Task | null>(null);
+  const [taskLoadFailed, setTaskLoadFailed] = useState(false);
   const scopedNav = taskId ? taskNav(taskId) : [];
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!taskId) {
+      setCurrentTask(null);
+      setTaskLoadFailed(false);
+      return;
+    }
+
+    setTaskLoadFailed(false);
+    getTask(taskId)
+      .then((task) => {
+        if (!cancelled) {
+          setCurrentTask(task);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCurrentTask(null);
+          setTaskLoadFailed(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [taskId]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -86,7 +117,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
           {taskId ? (
             <section className="mt-7 border-t border-slate-200 pt-5">
               <p className="px-3 text-xs font-medium uppercase text-slate-400">当前任务</p>
-              <p className="mt-2 break-all rounded-md bg-slate-50 px-3 py-2 font-mono text-xs text-slate-500">{taskId}</p>
+              <p className="mt-2 rounded-md bg-slate-50 px-3 py-2 text-sm font-medium leading-5 text-slate-700" title={taskId}>
+                {currentTask?.name ?? (taskLoadFailed ? "任务加载失败" : "加载任务中...")}
+              </p>
               <nav className="mt-3 grid gap-1">
                 {scopedNav.map((item) => (
                   <NavLink item={item} key={item.href} pathname={pathname} />
