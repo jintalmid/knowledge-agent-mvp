@@ -59,6 +59,47 @@ knowledge-agent-mvp/
   README.md
 ```
 
+## 一键部署
+
+Ubuntu 服务器上直接执行：
+
+```bash
+wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/scripts/install_ubuntu.sh | bash
+```
+
+脚本会一步步引导完成：
+
+- 从 GitHub 下载项目。
+- 安装 Python、Node.js、npm 等依赖。
+- 创建后端虚拟环境并安装 `requirements.txt`。
+- 生成 `backend/.env`，配置 LLM 地址、API Key、默认模型和超时时间。
+- 生成 `frontend/.env.local`，配置前端访问后端的地址。
+- 初始化 SQLite 数据库。
+- 构建前端，并输出前后端启动命令。
+- 可选通过 `ufw` 开放外部访问端口。
+
+脚本会自己从 GitHub 下载项目内容，不需要先手动 `git clone`。如果系统没有 `wget`，可用：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/scripts/install_ubuntu.sh | bash
+```
+
+如果仓库是私有仓库，需要先完成 GitHub 登录，或在脚本提示 `GitHub repository URL` 时填写有权限的 clone 地址。
+
+## 删除
+
+一行删除命令：
+
+```bash
+wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/scripts/install_ubuntu.sh | bash -s -- --uninstall
+```
+
+安全限制：
+
+- 安装目录必须位于当前用户的 `$HOME` 下，例如 `$HOME/knowledge-agent-mvp`。
+- 默认不会覆盖非空的普通目录。
+- 卸载只允许删除 `$HOME` 下的安装目录，并要求输入 `DELETE` 二次确认。
+
 ## 快速启动
 
 ### 1. 启动后端
