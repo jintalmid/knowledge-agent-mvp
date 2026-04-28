@@ -4,8 +4,8 @@ set -euo pipefail
 
 REPO_URL_DEFAULT="https://github.com/jintalmid/knowledge-agent-mvp.git"
 PROJECT_NAME="knowledge-agent-mvp"
-SCRIPT_VERSION="2026-04-28.3"
-SCRIPT_UPDATED_AT="2026-04-28"
+SCRIPT_VERSION="2026-04-28.4"
+SCRIPT_UPDATED_AT_UTC="2026-04-28 01:05:00 UTC"
 COMMAND="install"
 INSTALL_DIR_ARG=""
 ASSUME_YES="0"
@@ -14,20 +14,25 @@ say() {
   printf "\n==> %s\n" "$1"
 }
 
-local_run_time() {
-  date "+%Y-%m-%d %H:%M:%S %Z (%z)"
-}
-
-utc_run_time() {
-  date -u "+%Y-%m-%d %H:%M:%S UTC"
+script_updated_at_local() {
+  if date -d "$SCRIPT_UPDATED_AT_UTC" "+%Y-%m-%d %H:%M:%S %Z (%z)" >/dev/null 2>&1; then
+    date -d "$SCRIPT_UPDATED_AT_UTC" "+%Y-%m-%d %H:%M:%S %Z (%z)"
+  else
+    local updated_epoch
+    updated_epoch="$(date -j -u -f "%Y-%m-%d %H:%M:%S" "${SCRIPT_UPDATED_AT_UTC% UTC}" "+%s" 2>/dev/null || true)"
+    if [ -n "$updated_epoch" ]; then
+      date -r "$updated_epoch" "+%Y-%m-%d %H:%M:%S %Z (%z)"
+    else
+      printf "%s" "$SCRIPT_UPDATED_AT_UTC"
+    fi
+  fi
 }
 
 print_script_banner() {
   printf "\n%s Ubuntu installer\n" "$PROJECT_NAME"
   printf "Script version: %s\n" "$SCRIPT_VERSION"
-  printf "Script updated at: %s\n" "$SCRIPT_UPDATED_AT"
-  printf "Run started local: %s\n" "$(local_run_time)"
-  printf "Run started UTC: %s\n" "$(utc_run_time)"
+  printf "Script updated local: %s\n" "$(script_updated_at_local)"
+  printf "Script updated UTC: %s\n" "$SCRIPT_UPDATED_AT_UTC"
 }
 
 die() {

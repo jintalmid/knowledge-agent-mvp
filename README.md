@@ -67,7 +67,7 @@ Ubuntu 服务器上直接执行：
 wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/scripts/install_ubuntu.sh | bash
 ```
 
-当前脚本版本：`2026-04-28.3`，更新时间：`2026-04-28`。脚本运行时会在最前面打印版本、脚本更新日期、本机当地运行时间和 UTC 运行时间，方便确认是否拉到了最新版。
+当前脚本版本：`2026-04-28.4`，更新时间 UTC：`2026-04-28 01:05:00 UTC`。脚本运行时会在最前面打印版本、基于本机时区转换后的更新时间和 UTC 更新时间，方便确认是否拉到了最新版。
 
 脚本会一步步引导完成：
 
