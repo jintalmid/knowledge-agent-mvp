@@ -4,6 +4,8 @@ set -euo pipefail
 
 REPO_URL_DEFAULT="https://github.com/jintalmid/knowledge-agent-mvp.git"
 PROJECT_NAME="knowledge-agent-mvp"
+SCRIPT_VERSION="2026-04-28.1"
+SCRIPT_UPDATED_AT="2026-04-28 15:30 Asia/Shanghai"
 COMMAND="install"
 INSTALL_DIR_ARG=""
 ASSUME_YES="0"
@@ -20,6 +22,8 @@ die() {
 usage() {
   cat <<USAGE
 $PROJECT_NAME Ubuntu installer
+Script version: $SCRIPT_VERSION
+Updated at: $SCRIPT_UPDATED_AT
 
 Usage:
   bash install_ubuntu.sh
@@ -225,6 +229,8 @@ uninstall_project() {
   default_install_dir="$(detect_repo_root)"
 
   printf "\n%s Ubuntu uninstaller\n" "$PROJECT_NAME"
+  printf "Script version: %s\n" "$SCRIPT_VERSION"
+  printf "Updated at: %s\n" "$SCRIPT_UPDATED_AT"
 
   if [ -n "$INSTALL_DIR_ARG" ]; then
     INSTALL_DIR="$INSTALL_DIR_ARG"
@@ -264,6 +270,8 @@ main() {
   default_public_host="$(detect_public_host)"
 
   printf "\n%s Ubuntu installer\n" "$PROJECT_NAME"
+  printf "Script version: %s\n" "$SCRIPT_VERSION"
+  printf "Updated at: %s\n" "$SCRIPT_UPDATED_AT"
   printf "This script installs system dependencies, configures env files, and builds the frontend.\n"
 
   prompt REPO_URL "GitHub repository URL" "$REPO_URL_DEFAULT"
