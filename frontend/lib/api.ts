@@ -106,9 +106,13 @@ export type FileSummary = {
 
 export type LlmSettings = {
   provider_type: string | null;
+  config_source: string;
+  env_file_path: string;
+  base_url: string | null;
   base_url_configured: boolean;
   api_key_configured: boolean;
   model: string | null;
+  timeout_seconds: number;
   ready: boolean;
 };
 

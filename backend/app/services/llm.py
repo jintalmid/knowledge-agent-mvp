@@ -61,9 +61,13 @@ def get_llm_settings() -> LlmSettingsRead:
     )
     return LlmSettingsRead(
         provider_type=provider_type,
+        config_source="backend/.env; process environment variables can override same-name settings",
+        env_file_path=str(settings.model_config["env_file"]),
+        base_url=settings.llm_base_url,
         base_url_configured=bool(settings.llm_base_url),
         api_key_configured=bool(settings.llm_api_key),
         model=settings.llm_model,
+        timeout_seconds=settings.llm_timeout_seconds,
         ready=ready,
     )
 

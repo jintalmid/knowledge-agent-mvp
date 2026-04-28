@@ -55,26 +55,50 @@ export default function LlmSettingsClient() {
       {error ? <div className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
 
       <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-950">后端读取到的 LLM 配置</h2>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              当前页面只读配置状态，不在浏览器中保存 API Key。
+            </p>
+          </div>
+          <span className={settings?.ready ? "rounded-md bg-emerald-50 px-2.5 py-1 text-sm font-medium text-emerald-700" : "rounded-md bg-red-50 px-2.5 py-1 text-sm font-medium text-red-700"}>
+            {settings?.ready ? "配置项完整" : "配置项不完整"}
+          </span>
+        </div>
+
         <dl className="grid gap-4 md:grid-cols-2">
           <div>
-            <dt className="text-xs font-medium text-slate-500">API base</dt>
+            <dt className="text-xs font-medium text-slate-500">配置来源</dt>
+            <dd className="mt-1 text-sm text-slate-900">{settings?.config_source ?? "加载中"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-slate-500">配置文件</dt>
+            <dd className="mt-1 break-all font-mono text-sm text-slate-900">{settings?.env_file_path ?? "加载中"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-slate-500">前端连接的后端 API</dt>
             <dd className="mt-1 break-all font-mono text-sm text-slate-900">{getApiBaseUrl()}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium text-slate-500">provider_type</dt>
+            <dt className="text-xs font-medium text-slate-500">LLM provider</dt>
             <dd className="mt-1 font-mono text-sm text-slate-900">{settings?.provider_type ?? "未配置"}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium text-slate-500">model</dt>
+            <dt className="text-xs font-medium text-slate-500">LLM base_url</dt>
+            <dd className="mt-1 break-all font-mono text-sm text-slate-900">{settings?.base_url ?? "未配置"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-slate-500">LLM model</dt>
             <dd className="mt-1 font-mono text-sm text-slate-900">{settings?.model ?? "未配置"}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium text-slate-500">base_url</dt>
-            <dd className="mt-1 font-mono text-sm text-slate-900">{settings?.base_url_configured ? "已配置" : "未配置"}</dd>
+            <dt className="text-xs font-medium text-slate-500">LLM api_key</dt>
+            <dd className="mt-1 font-mono text-sm text-slate-900">{settings?.api_key_configured ? "已配置，已隐藏" : "未配置"}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium text-slate-500">api_key</dt>
-            <dd className="mt-1 font-mono text-sm text-slate-900">{settings?.api_key_configured ? "已配置" : "未配置"}</dd>
+            <dt className="text-xs font-medium text-slate-500">timeout</dt>
+            <dd className="mt-1 font-mono text-sm text-slate-900">{settings ? `${settings.timeout_seconds}s` : "加载中"}</dd>
           </div>
         </dl>
         <div className="mt-5 flex items-center gap-3">
@@ -93,12 +117,9 @@ export default function LlmSettingsClient() {
           >
             刷新状态
           </button>
-          <span className={settings?.ready ? "text-sm text-emerald-700" : "text-sm text-red-700"}>
-            {settings?.ready ? "配置项完整" : "配置项不完整"}
-          </span>
         </div>
         <p className="mt-3 text-xs leading-5 text-slate-500">
-          配置项完整只表示后端已读取到 provider、base_url、api_key 和 model；是否可用以“测试 LLM”的结果为准。
+          配置项完整只表示后端已读取到 provider、base_url、api_key 和 model。真实可用性以“测试 LLM”的结果为准；环境变量会覆盖同名 .env 配置。
         </p>
       </section>
 

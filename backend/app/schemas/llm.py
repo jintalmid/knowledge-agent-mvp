@@ -5,9 +5,13 @@ from pydantic import BaseModel
 
 class LlmSettingsRead(BaseModel):
     provider_type: str | None
+    config_source: str
+    env_file_path: str
+    base_url: str | None
     base_url_configured: bool
     api_key_configured: bool
     model: str | None
+    timeout_seconds: int
     ready: bool
 
 
