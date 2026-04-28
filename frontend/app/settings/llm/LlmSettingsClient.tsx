@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getLlmSettings, LlmSettings, LlmTestResult, testLlm } from "@/lib/api";
+import { getApiBaseUrl, getLlmSettings, LlmSettings, LlmTestResult, testLlm } from "@/lib/api";
 
 export default function LlmSettingsClient() {
   const [settings, setSettings] = useState<LlmSettings | null>(null);
@@ -57,6 +57,10 @@ export default function LlmSettingsClient() {
       <section className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
         <dl className="grid gap-4 md:grid-cols-2">
           <div>
+            <dt className="text-xs font-medium text-slate-500">API base</dt>
+            <dd className="mt-1 break-all font-mono text-sm text-slate-900">{getApiBaseUrl()}</dd>
+          </div>
+          <div>
             <dt className="text-xs font-medium text-slate-500">provider_type</dt>
             <dd className="mt-1 font-mono text-sm text-slate-900">{settings?.provider_type ?? "未配置"}</dd>
           </div>
@@ -82,15 +86,25 @@ export default function LlmSettingsClient() {
           >
             {isTesting ? "测试中" : "测试 LLM"}
           </button>
+          <button
+            className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            onClick={refresh}
+            type="button"
+          >
+            刷新状态
+          </button>
           <span className={settings?.ready ? "text-sm text-emerald-700" : "text-sm text-red-700"}>
-            {settings?.ready ? "配置完整" : "配置不完整"}
+            {settings?.ready ? "配置项完整" : "配置项不完整"}
           </span>
         </div>
+        <p className="mt-3 text-xs leading-5 text-slate-500">
+          配置项完整只表示后端已读取到 provider、base_url、api_key 和 model；是否可用以“测试 LLM”的结果为准。
+        </p>
       </section>
 
       {testResult ? (
         <section className="mt-5 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-          <p className="font-medium">{testResult.status}</p>
+          <p className="font-medium">连接测试成功</p>
           <p className="mt-2">{testResult.response_preview}</p>
           <p className="mt-2 font-mono text-xs">{testResult.log_id}</p>
         </section>

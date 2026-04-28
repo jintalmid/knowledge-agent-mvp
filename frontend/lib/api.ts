@@ -332,6 +332,10 @@ export type Phase0Requirements = {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
+export function getApiBaseUrl() {
+  return API_BASE_URL;
+}
+
 export async function getModules(): Promise<ModuleInfo[]> {
   const response = await fetch(`${API_BASE_URL}/api/modules`, {
     cache: "no-store",
