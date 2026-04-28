@@ -334,14 +334,36 @@ export type Phase0Requirements = {
   requirements: Phase0Requirement[];
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const CONFIGURED_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+
+function isLoopbackHost(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
 
 export function getApiBaseUrl() {
-  return API_BASE_URL;
+  if (typeof window === "undefined") {
+    return CONFIGURED_API_BASE_URL;
+  }
+
+  try {
+    const configuredUrl = new URL(CONFIGURED_API_BASE_URL);
+    if (isLoopbackHost(configuredUrl.hostname) && !isLoopbackHost(window.location.hostname)) {
+      configuredUrl.hostname = window.location.hostname;
+      return configuredUrl.toString().replace(/\/$/, "");
+    }
+  } catch {
+    return CONFIGURED_API_BASE_URL;
+  }
+
+  return CONFIGURED_API_BASE_URL;
+}
+
+function apiUrl(path: string) {
+  return `${getApiBaseUrl()}${path}`;
 }
 
 export async function getModules(): Promise<ModuleInfo[]> {
-  const response = await fetch(`${API_BASE_URL}/api/modules`, {
+  const response = await fetch(apiUrl("/api/modules"), {
     cache: "no-store",
   });
 
@@ -353,7 +375,7 @@ export async function getModules(): Promise<ModuleInfo[]> {
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(apiUrl(path), {
     ...init,
     headers: {
       "Content-Type": "application/json",
@@ -393,7 +415,7 @@ export async function updateTask(taskId: string, payload: TaskUpdatePayload): Pr
 }
 
 export async function deleteTask(taskId: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}`, {
+  const response = await fetch(apiUrl(`/api/tasks/${taskId}`), {
     method: "DELETE",
     cache: "no-store",
   });
@@ -412,7 +434,7 @@ export async function uploadTaskFile(taskId: string, file: File): Promise<TaskFi
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}/files`, {
+  const response = await fetch(apiUrl(`/api/tasks/${taskId}/files`), {
     method: "POST",
     body: formData,
     cache: "no-store",
@@ -431,7 +453,7 @@ export async function getTaskFile(taskFileId: string): Promise<TaskFile> {
 }
 
 export async function deleteTaskFile(taskFileId: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/task-files/${taskFileId}`, {
+  const response = await fetch(apiUrl(`/api/task-files/${taskFileId}`), {
     method: "DELETE",
     cache: "no-store",
   });
