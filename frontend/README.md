@@ -38,6 +38,8 @@ NEXT_PUBLIC_API_BASE_URL=auto:8000 npm run dev
 
 此时浏览器会用当前页面的 host 访问后端。例如打开 `http://localhost:3000` 时访问 `http://localhost:8000`，打开 `http://<Windows 当前 IP>:3000` 时访问 `http://<Windows 当前 IP>:8000`。
 
+在 Next.js 服务端渲染页面中，`auto:8000` 会转为 `http://127.0.0.1:8000`，用于让 `/modules` 这类服务端页面正常读取后端 API。
+
 ## 页面清单
 
 - `/`: 项目入口。

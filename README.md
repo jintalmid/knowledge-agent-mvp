@@ -97,6 +97,8 @@ curl -fsSL https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/
 
 这样 Windows WiFi IP 变化时，一般不需要重新修改前端配置。只要用新的访问地址打开前端，后端地址会自动跟随当前浏览器 host。
 
+`auto:8000` 在 Next.js 服务端渲染时会使用 `http://127.0.0.1:8000` 访问后端，在浏览器端会使用当前页面的 host 访问后端。
+
 在 WSL 里验证后端：
 
 ```bash

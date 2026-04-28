@@ -354,14 +354,22 @@ function browserDerivedApiBaseUrl(port = "8000") {
   return `${window.location.protocol}//${window.location.hostname}:${port}`;
 }
 
-export function getApiBaseUrl() {
-  if (typeof window === "undefined") {
-    return CONFIGURED_API_BASE_URL;
-  }
+function serverDerivedApiBaseUrl(port = "8000") {
+  return `http://127.0.0.1:${port}`;
+}
 
+export function getApiBaseUrl() {
   if (CONFIGURED_API_BASE_URL === "auto" || CONFIGURED_API_BASE_URL.startsWith("auto:")) {
     const [, port] = CONFIGURED_API_BASE_URL.split(":");
+    if (typeof window === "undefined") {
+      return serverDerivedApiBaseUrl(port || "8000");
+    }
+
     return browserDerivedApiBaseUrl(port || "8000");
+  }
+
+  if (typeof window === "undefined") {
+    return CONFIGURED_API_BASE_URL;
   }
 
   try {
