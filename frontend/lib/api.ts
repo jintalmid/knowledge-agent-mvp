@@ -340,14 +340,38 @@ function isLoopbackHost(hostname: string) {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }
 
+function isPrivateIpv4(hostname: string) {
+  const parts = hostname.split(".").map((part) => Number(part));
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return false;
+  }
+
+  const [first, second] = parts;
+  return first === 10 || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168);
+}
+
+function browserDerivedApiBaseUrl(port = "8000") {
+  return `${window.location.protocol}//${window.location.hostname}:${port}`;
+}
+
 export function getApiBaseUrl() {
   if (typeof window === "undefined") {
     return CONFIGURED_API_BASE_URL;
   }
 
+  if (CONFIGURED_API_BASE_URL === "auto" || CONFIGURED_API_BASE_URL.startsWith("auto:")) {
+    const [, port] = CONFIGURED_API_BASE_URL.split(":");
+    return browserDerivedApiBaseUrl(port || "8000");
+  }
+
   try {
     const configuredUrl = new URL(CONFIGURED_API_BASE_URL);
-    if (isLoopbackHost(configuredUrl.hostname) && !isLoopbackHost(window.location.hostname)) {
+    const configuredHost = configuredUrl.hostname;
+    const browserHost = window.location.hostname;
+    const configuredIsLocal = isLoopbackHost(configuredHost) || isPrivateIpv4(configuredHost);
+    const browserIsLocal = isLoopbackHost(browserHost) || isPrivateIpv4(browserHost);
+
+    if (configuredIsLocal && browserIsLocal && configuredHost !== browserHost) {
       configuredUrl.hostname = window.location.hostname;
       return configuredUrl.toString().replace(/\/$/, "");
     }

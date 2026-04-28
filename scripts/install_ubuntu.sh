@@ -4,8 +4,8 @@ set -euo pipefail
 
 REPO_URL_DEFAULT="https://github.com/jintalmid/knowledge-agent-mvp.git"
 PROJECT_NAME="knowledge-agent-mvp"
-SCRIPT_VERSION="2026-04-28.7"
-SCRIPT_UPDATED_AT_UTC="2026-04-28 04:24:00 UTC"
+SCRIPT_VERSION="2026-04-28.8"
+SCRIPT_UPDATED_AT_UTC="2026-04-28 04:31:00 UTC"
 COMMAND="install"
 INSTALL_DIR_ARG=""
 ASSUME_YES="0"
@@ -326,6 +326,14 @@ NEXT_PUBLIC_API_BASE_URL=$api_base_url
 ENV
 }
 
+frontend_api_base_url() {
+  if is_wsl; then
+    printf "auto:%s" "$BACKEND_PORT"
+  else
+    printf "http://%s:%s" "$PUBLIC_HOST" "$BACKEND_PORT"
+  fi
+}
+
 write_shell_var() {
   local var_name="$1"
   local value="$2"
@@ -585,7 +593,7 @@ update_project() {
   say "Updating frontend"
   cd "$INSTALL_DIR/frontend"
   npm install
-  write_frontend_env "$INSTALL_DIR/frontend/.env.local" "http://$PUBLIC_HOST:$BACKEND_PORT"
+  write_frontend_env "$INSTALL_DIR/frontend/.env.local" "$(frontend_api_base_url)"
   write_runtime_env
   if [ -z "${NODE_OPTIONS:-}" ]; then
     export NODE_OPTIONS="--max-old-space-size=2048"
@@ -700,7 +708,7 @@ main() {
   say "Setting up frontend"
   cd "$INSTALL_DIR/frontend"
   npm install
-  write_frontend_env "$INSTALL_DIR/frontend/.env.local" "http://$PUBLIC_HOST:$BACKEND_PORT"
+  write_frontend_env "$INSTALL_DIR/frontend/.env.local" "$(frontend_api_base_url)"
   write_runtime_env
   if [ -z "${NODE_OPTIONS:-}" ]; then
     export NODE_OPTIONS="--max-old-space-size=2048"

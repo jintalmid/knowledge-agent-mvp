@@ -30,6 +30,14 @@ http://localhost:8000
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 npm run dev
 ```
 
+WSL 或局域网 IP 经常变化时，可以使用自动模式：
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=auto:8000 npm run dev
+```
+
+此时浏览器会用当前页面的 host 访问后端。例如打开 `http://localhost:3000` 时访问 `http://localhost:8000`，打开 `http://<Windows 当前 IP>:3000` 时访问 `http://<Windows 当前 IP>:8000`。
+
 ## 页面清单
 
 - `/`: 项目入口。

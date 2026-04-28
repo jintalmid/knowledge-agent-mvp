@@ -67,7 +67,7 @@ Ubuntu 服务器上直接执行：
 wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/scripts/install_ubuntu.sh | bash
 ```
 
-当前脚本版本：`2026-04-28.7`，更新时间 UTC：`2026-04-28 04:24:00 UTC`。脚本运行时会在最前面打印版本、基于本机时区转换后的更新时间和 UTC 更新时间，方便确认是否拉到了最新版。
+当前脚本版本：`2026-04-28.8`，更新时间 UTC：`2026-04-28 04:31:00 UTC`。脚本运行时会在最前面打印版本、基于本机时区转换后的更新时间和 UTC 更新时间，方便确认是否拉到了最新版。
 
 脚本会一步步引导完成：
 
@@ -90,7 +90,12 @@ curl -fsSL https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/
 
 ### WSL 注意事项
 
-如果 Ubuntu 安装在 Windows WSL 中，脚本会默认把 `public host` 设置为 `localhost`，因为 Windows 浏览器通常通过 `http://localhost:3000` 访问 WSL 内的前端，并通过 `http://localhost:8000` 访问 WSL 内的后端。
+如果 Ubuntu 安装在 Windows WSL 中，脚本会默认把 `public host` 设置为 `localhost`。同时，前端会写入 `NEXT_PUBLIC_API_BASE_URL=auto:8000`，浏览器会根据当前打开页面的主机名自动访问后端：
+
+- 打开 `http://localhost:3000` 时，前端请求 `http://localhost:8000`。
+- 打开 `http://<Windows 当前 IP>:3000` 时，前端请求 `http://<Windows 当前 IP>:8000`。
+
+这样 Windows WiFi IP 变化时，一般不需要重新修改前端配置。只要用新的访问地址打开前端，后端地址会自动跟随当前浏览器 host。
 
 在 WSL 里验证后端：
 
