@@ -4,8 +4,8 @@ set -euo pipefail
 
 REPO_URL_DEFAULT="https://github.com/jintalmid/knowledge-agent-mvp.git"
 PROJECT_NAME="knowledge-agent-mvp"
-SCRIPT_VERSION="2026-04-28.6"
-SCRIPT_UPDATED_AT_UTC="2026-04-28 01:14:00 UTC"
+SCRIPT_VERSION="2026-04-28.7"
+SCRIPT_UPDATED_AT_UTC="2026-04-28 04:24:00 UTC"
 COMMAND="install"
 INSTALL_DIR_ARG=""
 ASSUME_YES="0"
@@ -206,11 +206,25 @@ detect_repo_root() {
 
 detect_public_host() {
   local host
+  if is_wsl; then
+    printf "localhost"
+    return
+  fi
   host="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"
   if [ -z "$host" ]; then
     host="127.0.0.1"
   fi
   printf "%s" "$host"
+}
+
+is_wsl() {
+  if [ -n "${WSL_DISTRO_NAME:-}" ]; then
+    return 0
+  fi
+  if grep -qiE "(microsoft|wsl)" /proc/version 2>/dev/null; then
+    return 0
+  fi
+  return 1
 }
 
 absolute_path() {

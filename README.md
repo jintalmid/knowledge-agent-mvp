@@ -67,7 +67,7 @@ Ubuntu 服务器上直接执行：
 wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/scripts/install_ubuntu.sh | bash
 ```
 
-当前脚本版本：`2026-04-28.6`，更新时间 UTC：`2026-04-28 01:14:00 UTC`。脚本运行时会在最前面打印版本、基于本机时区转换后的更新时间和 UTC 更新时间，方便确认是否拉到了最新版。
+当前脚本版本：`2026-04-28.7`，更新时间 UTC：`2026-04-28 04:24:00 UTC`。脚本运行时会在最前面打印版本、基于本机时区转换后的更新时间和 UTC 更新时间，方便确认是否拉到了最新版。
 
 脚本会一步步引导完成：
 
@@ -87,6 +87,24 @@ curl -fsSL https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/
 ```
 
 如果仓库是私有仓库，需要先完成 GitHub 登录，或在脚本提示 `GitHub repository URL` 时填写有权限的 clone 地址。
+
+### WSL 注意事项
+
+如果 Ubuntu 安装在 Windows WSL 中，脚本会默认把 `public host` 设置为 `localhost`，因为 Windows 浏览器通常通过 `http://localhost:3000` 访问 WSL 内的前端，并通过 `http://localhost:8000` 访问 WSL 内的后端。
+
+在 WSL 里验证后端：
+
+```bash
+curl -s http://127.0.0.1:8000/api/settings/llm
+```
+
+在 Windows PowerShell 里验证浏览器同侧链路：
+
+```powershell
+curl.exe http://localhost:8000/api/settings/llm
+```
+
+如果 WSL 里正常、PowerShell 里不正常，问题通常是 WSL 端口转发、Windows 防火墙或服务没有监听到可被 Windows 访问的地址。
 
 ## 一键更新
 
