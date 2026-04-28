@@ -4,8 +4,8 @@ set -euo pipefail
 
 REPO_URL_DEFAULT="https://github.com/jintalmid/knowledge-agent-mvp.git"
 PROJECT_NAME="knowledge-agent-mvp"
-SCRIPT_VERSION="2026-04-28.1"
-SCRIPT_UPDATED_AT="2026-04-28 15:30 Asia/Shanghai"
+SCRIPT_VERSION="2026-04-28.3"
+SCRIPT_UPDATED_AT="2026-04-28"
 COMMAND="install"
 INSTALL_DIR_ARG=""
 ASSUME_YES="0"
@@ -14,17 +14,30 @@ say() {
   printf "\n==> %s\n" "$1"
 }
 
+local_run_time() {
+  date "+%Y-%m-%d %H:%M:%S %Z (%z)"
+}
+
+utc_run_time() {
+  date -u "+%Y-%m-%d %H:%M:%S UTC"
+}
+
+print_script_banner() {
+  printf "\n%s Ubuntu installer\n" "$PROJECT_NAME"
+  printf "Script version: %s\n" "$SCRIPT_VERSION"
+  printf "Script updated at: %s\n" "$SCRIPT_UPDATED_AT"
+  printf "Run started local: %s\n" "$(local_run_time)"
+  printf "Run started UTC: %s\n" "$(utc_run_time)"
+}
+
 die() {
   printf "\nERROR: %s\n" "$1" >&2
   exit 1
 }
 
 usage() {
+  print_script_banner
   cat <<USAGE
-$PROJECT_NAME Ubuntu installer
-Script version: $SCRIPT_VERSION
-Updated at: $SCRIPT_UPDATED_AT
-
 Usage:
   bash install_ubuntu.sh
   bash install_ubuntu.sh --uninstall
@@ -228,9 +241,8 @@ uninstall_project() {
   local default_install_dir
   default_install_dir="$(detect_repo_root)"
 
-  printf "\n%s Ubuntu uninstaller\n" "$PROJECT_NAME"
-  printf "Script version: %s\n" "$SCRIPT_VERSION"
-  printf "Updated at: %s\n" "$SCRIPT_UPDATED_AT"
+  print_script_banner
+  printf "Mode: uninstall\n"
 
   if [ -n "$INSTALL_DIR_ARG" ]; then
     INSTALL_DIR="$INSTALL_DIR_ARG"
@@ -269,9 +281,8 @@ main() {
   default_install_dir="$(detect_repo_root)"
   default_public_host="$(detect_public_host)"
 
-  printf "\n%s Ubuntu installer\n" "$PROJECT_NAME"
-  printf "Script version: %s\n" "$SCRIPT_VERSION"
-  printf "Updated at: %s\n" "$SCRIPT_UPDATED_AT"
+  print_script_banner
+  printf "Mode: install\n"
   printf "This script installs system dependencies, configures env files, and builds the frontend.\n"
 
   prompt REPO_URL "GitHub repository URL" "$REPO_URL_DEFAULT"
