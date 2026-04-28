@@ -112,6 +112,25 @@ wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/s
 wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/scripts/install_ubuntu.sh | bash -s -- --update --install-dir "$HOME/apps/knowledge-agent-mvp"
 ```
 
+## 命令行测试 LLM
+
+如果需要绕过前端页面，直接验证 `backend/.env` 里的 LLM 配置：
+
+```bash
+cd "$HOME/knowledge-agent-mvp"
+bash scripts/test_llm_env.sh
+```
+
+脚本会自动使用 `backend/.venv/bin/python`，读取 `backend/.env`，隐藏 API Key，并直接调用 OpenAI-compatible `/chat/completions`。
+
+可选参数：
+
+```bash
+bash scripts/test_llm_env.sh --timeout 300
+bash scripts/test_llm_env.sh --message "Reply only: ok"
+bash scripts/test_llm_env.sh --env "$HOME/knowledge-agent-mvp/backend/.env"
+```
+
 ## 一键启动 / 查看 / 停止
 
 安装完成后，脚本会把端口、host 和访问地址保存到 `$HOME/knowledge-agent-mvp/.runtime/app.env`。之后可以用同一个脚本管理服务。
