@@ -132,3 +132,77 @@ def test_manual_retry_parse_still_works_after_auto_parse_failure(workspace, monk
         assert refreshed is not None
         assert refreshed.parse_status == "parsed"
         assert refreshed.parse_error is None
+
+
+def test_same_task_duplicate_upload_returns_existing_reference(workspace, monkeypatch):
+    calls = {"count": 0}
+    original_parse = file_service.parsing_service.parse_task_file
+
+    def count_parse(connection, task_file_id):
+        calls["count"] += 1
+        return original_parse(connection, task_file_id)
+
+    monkeypatch.setattr(file_service.parsing_service, "parse_task_file", count_parse)
+
+    with db_session() as connection:
+        task_id = _create_task(connection)
+        first_task_file = asyncio.run(
+            file_service.create_task_file(
+                connection,
+                task_id,
+                _upload("duplicate-a.txt", b"same content"),
+                CurrentUser(),
+            )
+        )
+        second_task_file = asyncio.run(
+            file_service.create_task_file(
+                connection,
+                task_id,
+                _upload("duplicate-b.txt", b"same content"),
+                CurrentUser(),
+            )
+        )
+
+        task_files = file_service.list_task_files(connection, task_id)
+        physical_file = file_service.get_physical_file(connection, first_task_file.physical_file_id)
+
+        assert second_task_file.id == first_task_file.id
+        assert task_files is not None
+        assert len(task_files) == 1
+        assert physical_file is not None
+        assert physical_file.ref_count == 1
+        assert calls["count"] == 1
+
+
+def test_same_physical_file_can_be_referenced_by_different_tasks(workspace):
+    with db_session() as connection:
+        first_task_id = _create_task(connection)
+        second_task_id = task_service.create_task(
+            connection,
+            TaskCreate(name="second task", description=""),
+            CurrentUser(),
+        ).id
+
+        first_task_file = asyncio.run(
+            file_service.create_task_file(
+                connection,
+                first_task_id,
+                _upload("shared-a.txt", b"shared content"),
+                CurrentUser(),
+            )
+        )
+        second_task_file = asyncio.run(
+            file_service.create_task_file(
+                connection,
+                second_task_id,
+                _upload("shared-b.txt", b"shared content"),
+                CurrentUser(),
+            )
+        )
+
+        physical_file = file_service.get_physical_file(connection, first_task_file.physical_file_id)
+
+        assert second_task_file.id != first_task_file.id
+        assert second_task_file.physical_file_id == first_task_file.physical_file_id
+        assert physical_file is not None
+        assert physical_file.ref_count == 2

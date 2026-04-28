@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import Pagination from "@/components/Pagination";
 import { AgentRun, getAgentRun } from "@/lib/api";
+import { usePagination } from "@/lib/usePagination";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -37,6 +39,7 @@ export default function AgentRunClient({ taskId, runId }: { taskId: string; runI
   const [agentRun, setAgentRun] = useState<AgentRun | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const iterationPagination = usePagination(agentRun?.iterations ?? [], 10);
 
   async function refresh() {
     setIsLoading(true);
@@ -135,7 +138,7 @@ export default function AgentRunClient({ taskId, runId }: { taskId: string; runI
             </article>
           )}
 
-          {agentRun.iterations.map((iteration) => {
+          {iterationPagination.paginatedItems.map((iteration) => {
             const plan = iteration.plan_text ?? {};
             const reflection = iteration.reflection_text ?? {};
             const selectedFiles = stringList(plan.selected_file_ids);
@@ -243,6 +246,17 @@ export default function AgentRunClient({ taskId, runId }: { taskId: string; runI
               </article>
             );
           })}
+          {agentRun.iterations.length > 0 ? (
+            <Pagination
+              label="轮迭代"
+              onPageChange={iterationPagination.setPage}
+              onPageSizeChange={iterationPagination.setPageSize}
+              page={iterationPagination.page}
+              pageSize={iterationPagination.pageSize}
+              totalItems={iterationPagination.totalItems}
+              totalPages={iterationPagination.totalPages}
+            />
+          ) : null}
 
         </section>
       ) : null}

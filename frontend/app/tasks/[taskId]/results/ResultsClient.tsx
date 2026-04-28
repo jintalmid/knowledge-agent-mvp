@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import Pagination from "@/components/Pagination";
 import { Answer, askTaskQuestion, getTaskResults, startAgentRun } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
+import { usePagination } from "@/lib/usePagination";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -97,6 +99,7 @@ export default function ResultsClient({ taskId }: { taskId: string }) {
 
   const activeAnswer = results.find((answer) => answer.id === activeAnswerId) ?? null;
   const uncertainties = activeAnswer ? extractUncertainties(activeAnswer.answer_text_markdown) : [];
+  const resultPagination = usePagination(results, 10);
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-10">
@@ -124,7 +127,7 @@ export default function ResultsClient({ taskId }: { taskId: string }) {
 
       <section className="grid gap-4 lg:grid-cols-[320px_1fr]">
         <aside className="grid h-fit gap-3">
-          {results.map((answer) => (
+          {resultPagination.paginatedItems.map((answer) => (
             <button
               className={
                 activeAnswerId === answer.id
@@ -141,6 +144,17 @@ export default function ResultsClient({ taskId }: { taskId: string }) {
             </button>
           ))}
           {results.length === 0 && !isLoading ? <p className="text-sm text-slate-500">暂无历史结果</p> : null}
+          {results.length > 0 ? (
+            <Pagination
+              label="条结果"
+              onPageChange={resultPagination.setPage}
+              onPageSizeChange={resultPagination.setPageSize}
+              page={resultPagination.page}
+              pageSize={resultPagination.pageSize}
+              totalItems={resultPagination.totalItems}
+              totalPages={resultPagination.totalPages}
+            />
+          ) : null}
         </aside>
 
         {activeAnswer ? (

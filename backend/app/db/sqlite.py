@@ -18,6 +18,43 @@ def _ensure_column(connection: sqlite3.Connection, table_name: str, column_name:
         connection.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}")
 
 
+def _deduplicate_task_file_references(connection: sqlite3.Connection) -> None:
+    rows = connection.execute(
+        """
+        SELECT id, task_id, physical_file_id
+        FROM task_files
+        ORDER BY task_id ASC, physical_file_id ASC, created_at ASC, id ASC
+        """
+    ).fetchall()
+
+    seen: set[tuple[str, str]] = set()
+    duplicate_ids: list[str] = []
+
+    for row in rows:
+        key = (row["task_id"], row["physical_file_id"])
+        if key in seen:
+            duplicate_ids.append(row["id"])
+        else:
+            seen.add(key)
+
+    if duplicate_ids:
+        connection.executemany(
+            "DELETE FROM task_files WHERE id = ?",
+            [(task_file_id,) for task_file_id in duplicate_ids],
+        )
+
+    connection.execute(
+        """
+        UPDATE physical_files
+        SET ref_count = (
+            SELECT COUNT(*)
+            FROM task_files
+            WHERE task_files.physical_file_id = physical_files.id
+        )
+        """
+    )
+
+
 @contextmanager
 def db_session() -> Iterator[sqlite3.Connection]:
     connection = get_connection()
@@ -95,6 +132,13 @@ def init_db() -> None:
         connection.execute("CREATE INDEX IF NOT EXISTS idx_task_files_task_id ON task_files(task_id)")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_task_files_physical_file_id ON task_files(physical_file_id)")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_physical_files_content_hash ON physical_files(content_hash)")
+        _deduplicate_task_file_references(connection)
+        connection.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_task_files_unique_task_physical_file
+            ON task_files(task_id, physical_file_id)
+            """
+        )
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS parsed_contents (

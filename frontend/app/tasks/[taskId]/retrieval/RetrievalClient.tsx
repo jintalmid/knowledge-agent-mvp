@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Pagination from "@/components/Pagination";
 import {
   DocumentChunk,
   generateTaskFileChunks,
@@ -17,6 +18,7 @@ import {
   TaskFile,
   updateRetrievalSettings,
 } from "@/lib/api";
+import { usePagination } from "@/lib/usePagination";
 
 const retrievalModes: { value: RetrievalMode; label: string }[] = [
   { value: "summary_only", label: "summary_only" },
@@ -137,6 +139,8 @@ export default function RetrievalClient({ taskId }: { taskId: string }) {
     () => taskFiles.filter((taskFile) => taskFile.parse_status === "parsed"),
     [taskFiles],
   );
+  const taskFilePagination = usePagination(taskFiles, 10);
+  const resultPagination = usePagination(result?.results ?? [], 10);
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-6 py-10">
@@ -214,7 +218,7 @@ export default function RetrievalClient({ taskId }: { taskId: string }) {
           </div>
         </div>
         <div className="grid gap-3">
-          {taskFiles.map((taskFile) => {
+          {taskFilePagination.paginatedItems.map((taskFile) => {
             const count = chunkCounts[taskFile.id] ?? 0;
             return (
               <div key={taskFile.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-100 p-3">
@@ -240,6 +244,17 @@ export default function RetrievalClient({ taskId }: { taskId: string }) {
             <p className="text-sm text-slate-500">还没有已解析文件，请先进入解析页面。</p>
           ) : null}
         </div>
+        {taskFiles.length > 0 ? (
+          <Pagination
+            label="个文件"
+            onPageChange={taskFilePagination.setPage}
+            onPageSizeChange={taskFilePagination.setPageSize}
+            page={taskFilePagination.page}
+            pageSize={taskFilePagination.pageSize}
+            totalItems={taskFilePagination.totalItems}
+            totalPages={taskFilePagination.totalPages}
+          />
+        ) : null}
       </section>
 
       <form className="mb-6 rounded-md border border-slate-200 bg-white p-5 shadow-sm" onSubmit={onRetrieve}>
@@ -268,7 +283,7 @@ export default function RetrievalClient({ taskId }: { taskId: string }) {
             <p className="font-mono text-xs text-slate-500">mode: {result.retrieval_mode} / status: {result.status}</p>
             <p className="mt-2 text-sm text-slate-700">{result.message}</p>
           </div>
-          {result.results.map((candidate) => (
+          {resultPagination.paginatedItems.map((candidate) => (
             <article key={candidate.task_file_id} className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -302,6 +317,17 @@ export default function RetrievalClient({ taskId }: { taskId: string }) {
             </article>
           ))}
           {result.results.length === 0 ? <p className="text-sm text-slate-500">暂无候选文件</p> : null}
+          {result.results.length > 0 ? (
+            <Pagination
+              label="个候选"
+              onPageChange={resultPagination.setPage}
+              onPageSizeChange={resultPagination.setPageSize}
+              page={resultPagination.page}
+              pageSize={resultPagination.pageSize}
+              totalItems={resultPagination.totalItems}
+              totalPages={resultPagination.totalPages}
+            />
+          ) : null}
         </section>
       ) : null}
     </main>

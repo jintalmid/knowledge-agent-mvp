@@ -121,6 +121,10 @@ export type LlmTestResult = {
 export type LlmCallLog = {
   id: string;
   task_id: string | null;
+  task_name: string | null;
+  owner_user_id: string | null;
+  department_id: string | null;
+  security_level: string | null;
   agent_run_id: string | null;
   iteration_id: string | null;
   module_name: string;

@@ -68,6 +68,33 @@ def get_physical_file(connection: Connection, physical_file_id: str) -> Physical
     return _physical_row_to_read(row)
 
 
+def _get_task_file_by_task_and_physical_file(
+    connection: Connection,
+    task_id: str,
+    physical_file_id: str,
+) -> TaskFileRead | None:
+    row = connection.execute(
+        """
+        SELECT
+            tf.*,
+            pf.file_ext,
+            pf.mime_type,
+            pf.file_size,
+            pf.ref_count,
+            pf.created_at AS physical_created_at
+        FROM task_files tf
+        JOIN physical_files pf ON pf.id = tf.physical_file_id
+        WHERE tf.task_id = ? AND tf.physical_file_id = ?
+        ORDER BY tf.created_at ASC
+        LIMIT 1
+        """,
+        (task_id, physical_file_id),
+    ).fetchone()
+    if row is None:
+        return None
+    return _task_file_row_to_read(row)
+
+
 async def create_task_file(
     connection: Connection,
     task_id: str,
@@ -132,44 +159,54 @@ async def create_task_file(
     else:
         physical_file_id = physical_file.id
 
+    existing_task_file = _get_task_file_by_task_and_physical_file(connection, task_id, physical_file_id)
+    if existing_task_file is not None:
+        return existing_task_file
+
     task_file_id = f"tf_{uuid4().hex}"
-    connection.execute(
-        """
-        INSERT INTO task_files (
-            id,
-            task_id,
-            physical_file_id,
-            display_name,
-            file_role,
-            parse_status,
-            parse_error,
-            summary_status,
-            embedding_status,
-            owner_user_id,
-            department_id,
-            security_level,
-            created_at,
-            updated_at
+    try:
+        connection.execute(
+            """
+            INSERT INTO task_files (
+                id,
+                task_id,
+                physical_file_id,
+                display_name,
+                file_role,
+                parse_status,
+                parse_error,
+                summary_status,
+                embedding_status,
+                owner_user_id,
+                department_id,
+                security_level,
+                created_at,
+                updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                task_file_id,
+                task_id,
+                physical_file_id,
+                original_filename,
+                FileRole.SOURCE.value,
+                PipelineStatus.PENDING.value,
+                None,
+                PipelineStatus.NOT_STARTED.value,
+                PipelineStatus.NOT_STARTED.value,
+                current_user.owner_user_id,
+                current_user.department_id,
+                current_user.security_level,
+                now,
+                now,
+            ),
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            task_file_id,
-            task_id,
-            physical_file_id,
-            original_filename,
-            FileRole.SOURCE.value,
-            PipelineStatus.PENDING.value,
-            None,
-            PipelineStatus.NOT_STARTED.value,
-            PipelineStatus.NOT_STARTED.value,
-            current_user.owner_user_id,
-            current_user.department_id,
-            current_user.security_level,
-            now,
-            now,
-        ),
-    )
+    except IntegrityError:
+        existing_task_file = _get_task_file_by_task_and_physical_file(connection, task_id, physical_file_id)
+        if existing_task_file is not None:
+            return existing_task_file
+        raise
     connection.execute(
         """
         UPDATE physical_files

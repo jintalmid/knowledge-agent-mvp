@@ -20,6 +20,10 @@ class LlmTestRead(BaseModel):
 class LlmCallLogRead(BaseModel):
     id: str
     task_id: str | None
+    task_name: str | None = None
+    owner_user_id: str | None = None
+    department_id: str | None = None
+    security_level: str | None = None
     agent_run_id: str | None = None
     iteration_id: str | None = None
     module_name: str

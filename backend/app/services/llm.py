@@ -36,6 +36,18 @@ def _row_to_log(row: Row) -> LlmCallLogRead:
     return LlmCallLogRead(**dict(row))
 
 
+LOG_SELECT_SQL = """
+    SELECT
+        l.*,
+        t.name AS task_name,
+        t.owner_user_id AS owner_user_id,
+        t.department_id AS department_id,
+        t.security_level AS security_level
+    FROM llm_call_logs l
+    LEFT JOIN tasks t ON t.id = l.task_id
+"""
+
+
 def get_llm_settings() -> LlmSettingsRead:
     settings = get_settings()
     provider_type = (settings.llm_provider_type or "").replace("-", "_") or None
@@ -202,12 +214,12 @@ def call_llm(
 
 
 def list_logs(connection: Connection) -> list[LlmCallLogRead]:
-    rows = connection.execute("SELECT * FROM llm_call_logs ORDER BY created_at DESC LIMIT 200").fetchall()
+    rows = connection.execute(f"{LOG_SELECT_SQL} ORDER BY l.created_at DESC LIMIT 200").fetchall()
     return [_row_to_log(row) for row in rows]
 
 
 def get_log(connection: Connection, log_id: str) -> LlmCallLogRead | None:
-    row = connection.execute("SELECT * FROM llm_call_logs WHERE id = ?", (log_id,)).fetchone()
+    row = connection.execute(f"{LOG_SELECT_SQL} WHERE l.id = ?", (log_id,)).fetchone()
     if row is None:
         return None
     return _row_to_log(row)

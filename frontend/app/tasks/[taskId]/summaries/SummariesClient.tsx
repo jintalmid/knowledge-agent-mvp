@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import Pagination from "@/components/Pagination";
 import {
   FileSummary,
   getTask,
@@ -12,6 +13,7 @@ import {
   Task,
   TaskFile,
 } from "@/lib/api";
+import { usePagination } from "@/lib/usePagination";
 
 export default function SummariesClient({ taskId }: { taskId: string }) {
   const [task, setTask] = useState<Task | null>(null);
@@ -100,6 +102,7 @@ export default function SummariesClient({ taskId }: { taskId: string }) {
   const summaryByTaskFile = Object.fromEntries(summaries.map((summary) => [summary.task_file_id, summary]));
   const missingSummaryCount = taskFiles.filter((taskFile) => !summaryByTaskFile[taskFile.id]).length;
   const isBatchSummarizing = isSummarizingAll || isSummarizingMissing;
+  const taskFilePagination = usePagination(taskFiles, 10);
 
   function toggleDetails(taskFileId: string) {
     setExpandedTaskFileIds((current) => {
@@ -151,7 +154,7 @@ export default function SummariesClient({ taskId }: { taskId: string }) {
       {isLoading ? <p className="text-sm text-slate-500">加载中</p> : null}
 
       <section className="grid gap-4">
-        {taskFiles.map((taskFile) => {
+        {taskFilePagination.paginatedItems.map((taskFile) => {
           const summary = summaryByTaskFile[taskFile.id];
           const isExpanded = expandedTaskFileIds.has(taskFile.id);
           return (
@@ -214,6 +217,17 @@ export default function SummariesClient({ taskId }: { taskId: string }) {
           );
         })}
       </section>
+      {taskFiles.length > 0 ? (
+        <Pagination
+          label="个文件"
+          onPageChange={taskFilePagination.setPage}
+          onPageSizeChange={taskFilePagination.setPageSize}
+          page={taskFilePagination.page}
+          pageSize={taskFilePagination.pageSize}
+          totalItems={taskFilePagination.totalItems}
+          totalPages={taskFilePagination.totalPages}
+        />
+      ) : null}
     </main>
   );
 }

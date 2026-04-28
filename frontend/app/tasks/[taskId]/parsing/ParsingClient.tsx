@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import Pagination from "@/components/Pagination";
 import {
   getParsedContent,
   getTask,
@@ -12,6 +13,7 @@ import {
   Task,
   TaskFile,
 } from "@/lib/api";
+import { usePagination } from "@/lib/usePagination";
 
 function previewText(value: string) {
   return value.length > 1600 ? `${value.slice(0, 1600)}\n...` : value;
@@ -33,6 +35,7 @@ export default function ParsingClient({ taskId }: { taskId: string }) {
   const [activeTaskFileId, setActiveTaskFileId] = useState<string | null>(null);
   const [isParsingAll, setIsParsingAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const taskFilePagination = usePagination(taskFiles, 10);
 
   async function loadParsedContents(files: TaskFile[]) {
     const entries = await Promise.all(
@@ -137,7 +140,7 @@ export default function ParsingClient({ taskId }: { taskId: string }) {
       ) : null}
 
       <section className="grid gap-4">
-        {taskFiles.map((taskFile) => {
+        {taskFilePagination.paginatedItems.map((taskFile) => {
           const parsed = parsedContents[taskFile.id];
           return (
             <article key={taskFile.id} className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
@@ -200,6 +203,17 @@ export default function ParsingClient({ taskId }: { taskId: string }) {
           );
         })}
       </section>
+      {taskFiles.length > 0 ? (
+        <Pagination
+          label="个文件"
+          onPageChange={taskFilePagination.setPage}
+          onPageSizeChange={taskFilePagination.setPageSize}
+          page={taskFilePagination.page}
+          pageSize={taskFilePagination.pageSize}
+          totalItems={taskFilePagination.totalItems}
+          totalPages={taskFilePagination.totalPages}
+        />
+      ) : null}
     </main>
   );
 }

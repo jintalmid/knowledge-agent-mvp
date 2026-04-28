@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Pagination from "@/components/Pagination";
 import { createTask, deleteTask, getTasks, Task } from "@/lib/api";
+import { usePagination } from "@/lib/usePagination";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -34,6 +36,7 @@ export default function TasksClient() {
 
   const activeCount = useMemo(() => tasks.filter((task) => task.status === "active").length, [tasks]);
   const draftCount = useMemo(() => tasks.filter((task) => task.status === "draft").length, [tasks]);
+  const taskPagination = usePagination(tasks, 10);
 
   async function refreshTasks() {
     setIsLoading(true);
@@ -179,7 +182,7 @@ export default function TasksClient() {
           ) : null}
 
           <div className="grid gap-3">
-            {tasks.map((task) => (
+            {taskPagination.paginatedItems.map((task) => (
               <article key={task.id} className="rounded-md border border-slate-200 bg-white p-4 shadow-sm hover:border-slate-300 hover:shadow-md">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
@@ -231,6 +234,17 @@ export default function TasksClient() {
               </article>
             ))}
           </div>
+          {tasks.length > 0 ? (
+            <Pagination
+              label="个任务"
+              onPageChange={taskPagination.setPage}
+              onPageSizeChange={taskPagination.setPageSize}
+              page={taskPagination.page}
+              pageSize={taskPagination.pageSize}
+              totalItems={taskPagination.totalItems}
+              totalPages={taskPagination.totalPages}
+            />
+          ) : null}
         </section>
       </section>
     </main>
