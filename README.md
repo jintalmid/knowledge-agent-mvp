@@ -67,7 +67,7 @@ Ubuntu 服务器上直接执行：
 wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/scripts/install_ubuntu.sh | bash
 ```
 
-当前脚本版本：`2026-04-28.4`，更新时间 UTC：`2026-04-28 01:05:00 UTC`。脚本运行时会在最前面打印版本、基于本机时区转换后的更新时间和 UTC 更新时间，方便确认是否拉到了最新版。
+当前脚本版本：`2026-04-28.6`，更新时间 UTC：`2026-04-28 01:14:00 UTC`。脚本运行时会在最前面打印版本、基于本机时区转换后的更新时间和 UTC 更新时间，方便确认是否拉到了最新版。
 
 脚本会一步步引导完成：
 
@@ -87,6 +87,60 @@ curl -fsSL https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/
 ```
 
 如果仓库是私有仓库，需要先完成 GitHub 登录，或在脚本提示 `GitHub repository URL` 时填写有权限的 clone 地址。
+
+## 一键更新
+
+如果已经部署过，可以基于当前安装目录拉取最新版本：
+
+```bash
+wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/scripts/install_ubuntu.sh | bash -s -- --update
+```
+
+更新流程会执行：
+
+- 如果后端或前端正在运行，先停止。
+- `git pull --ff-only` 拉取最新代码。
+- 更新后端 Python 依赖。
+- 执行 SQLite 初始化/迁移。
+- 更新前端 npm 依赖。
+- 使用 webpack 重新构建前端。
+- 如果更新前服务正在运行，更新后自动重新启动。
+
+如果安装在非默认目录，需要加 `--install-dir`：
+
+```bash
+wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/scripts/install_ubuntu.sh | bash -s -- --update --install-dir "$HOME/apps/knowledge-agent-mvp"
+```
+
+## 一键启动 / 查看 / 停止
+
+安装完成后，脚本会把端口、host 和访问地址保存到 `$HOME/knowledge-agent-mvp/.runtime/app.env`。之后可以用同一个脚本管理服务。
+
+一键启动：
+
+```bash
+wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/scripts/install_ubuntu.sh | bash -s -- --start
+```
+
+一键查看是否启动：
+
+```bash
+wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/scripts/install_ubuntu.sh | bash -s -- --status
+```
+
+一键停止：
+
+```bash
+wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/scripts/install_ubuntu.sh | bash -s -- --stop
+```
+
+如果安装在非默认目录，需要加 `--install-dir`：
+
+```bash
+wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/scripts/install_ubuntu.sh | bash -s -- --status --install-dir "$HOME/apps/knowledge-agent-mvp"
+```
+
+当前脚本使用 pid 文件管理后台进程，日志位于 `$HOME/knowledge-agent-mvp/.runtime/`。正式生产部署更常见的方式是 `systemd`；容器化部署更常见的是 `docker compose up/down/ps`。
 
 ## 删除
 

@@ -4,11 +4,16 @@ set -euo pipefail
 
 REPO_URL_DEFAULT="https://github.com/jintalmid/knowledge-agent-mvp.git"
 PROJECT_NAME="knowledge-agent-mvp"
-SCRIPT_VERSION="2026-04-28.4"
-SCRIPT_UPDATED_AT_UTC="2026-04-28 01:05:00 UTC"
+SCRIPT_VERSION="2026-04-28.6"
+SCRIPT_UPDATED_AT_UTC="2026-04-28 01:14:00 UTC"
 COMMAND="install"
 INSTALL_DIR_ARG=""
 ASSUME_YES="0"
+BACKEND_HOST_ARG=""
+BACKEND_PORT_ARG=""
+FRONTEND_HOST_ARG=""
+FRONTEND_PORT_ARG=""
+PUBLIC_HOST_ARG=""
 
 say() {
   printf "\n==> %s\n" "$1"
@@ -45,12 +50,25 @@ usage() {
   cat <<USAGE
 Usage:
   bash install_ubuntu.sh
+  bash install_ubuntu.sh --update
+  bash install_ubuntu.sh --start
+  bash install_ubuntu.sh --status
+  bash install_ubuntu.sh --stop
   bash install_ubuntu.sh --uninstall
   bash install_ubuntu.sh --install-dir "\$HOME/knowledge-agent-mvp"
 
 Options:
   --install-dir DIR   Install or uninstall directory. Must be inside \$HOME.
+  --update            Pull latest code, update dependencies, migrate DB, rebuild frontend.
+  --start             Start backend and frontend in the background.
+  --status            Show backend and frontend process status.
+  --stop              Stop backend and frontend processes started by this script.
   --uninstall         Remove the installed project directory after confirmation.
+  --backend-host HOST Override backend bind host for install/start.
+  --backend-port PORT Override backend port for install/start.
+  --frontend-host HOST Override frontend bind host for install/start.
+  --frontend-port PORT Override frontend port for install/start.
+  --public-host HOST  Override public host used in printed URLs.
   -y, --yes           Skip uninstall confirmation. Still restricted to \$HOME.
   -h, --help          Show this help.
 USAGE
@@ -62,6 +80,18 @@ parse_args() {
       --uninstall|uninstall)
         COMMAND="uninstall"
         ;;
+      --update|update)
+        COMMAND="update"
+        ;;
+      --start|start)
+        COMMAND="start"
+        ;;
+      --status|status)
+        COMMAND="status"
+        ;;
+      --stop|stop)
+        COMMAND="stop"
+        ;;
       --install-dir)
         shift
         [ "$#" -gt 0 ] || die "--install-dir requires a value"
@@ -69,6 +99,46 @@ parse_args() {
         ;;
       --install-dir=*)
         INSTALL_DIR_ARG="${1#*=}"
+        ;;
+      --backend-host)
+        shift
+        [ "$#" -gt 0 ] || die "--backend-host requires a value"
+        BACKEND_HOST_ARG="$1"
+        ;;
+      --backend-host=*)
+        BACKEND_HOST_ARG="${1#*=}"
+        ;;
+      --backend-port)
+        shift
+        [ "$#" -gt 0 ] || die "--backend-port requires a value"
+        BACKEND_PORT_ARG="$1"
+        ;;
+      --backend-port=*)
+        BACKEND_PORT_ARG="${1#*=}"
+        ;;
+      --frontend-host)
+        shift
+        [ "$#" -gt 0 ] || die "--frontend-host requires a value"
+        FRONTEND_HOST_ARG="$1"
+        ;;
+      --frontend-host=*)
+        FRONTEND_HOST_ARG="${1#*=}"
+        ;;
+      --frontend-port)
+        shift
+        [ "$#" -gt 0 ] || die "--frontend-port requires a value"
+        FRONTEND_PORT_ARG="$1"
+        ;;
+      --frontend-port=*)
+        FRONTEND_PORT_ARG="${1#*=}"
+        ;;
+      --public-host)
+        shift
+        [ "$#" -gt 0 ] || die "--public-host requires a value"
+        PUBLIC_HOST_ARG="$1"
+        ;;
+      --public-host=*)
+        PUBLIC_HOST_ARG="${1#*=}"
         ;;
       -y|--yes)
         ASSUME_YES="1"
@@ -242,6 +312,283 @@ NEXT_PUBLIC_API_BASE_URL=$api_base_url
 ENV
 }
 
+write_shell_var() {
+  local var_name="$1"
+  local value="$2"
+  printf "%s=%q\n" "$var_name" "$value"
+}
+
+runtime_dir() {
+  printf "%s/.runtime" "$INSTALL_DIR"
+}
+
+runtime_env_file() {
+  printf "%s/app.env" "$(runtime_dir)"
+}
+
+backend_pid_file() {
+  printf "%s/backend.pid" "$(runtime_dir)"
+}
+
+frontend_pid_file() {
+  printf "%s/frontend.pid" "$(runtime_dir)"
+}
+
+backend_log_file() {
+  printf "%s/backend.log" "$(runtime_dir)"
+}
+
+frontend_log_file() {
+  printf "%s/frontend.log" "$(runtime_dir)"
+}
+
+write_runtime_env() {
+  local runtime_env
+  mkdir -p "$(runtime_dir)"
+  runtime_env="$(runtime_env_file)"
+  {
+    write_shell_var INSTALL_DIR "$INSTALL_DIR"
+    write_shell_var BACKEND_HOST "$BACKEND_HOST"
+    write_shell_var BACKEND_PORT "$BACKEND_PORT"
+    write_shell_var FRONTEND_HOST "$FRONTEND_HOST"
+    write_shell_var FRONTEND_PORT "$FRONTEND_PORT"
+    write_shell_var PUBLIC_HOST "$PUBLIC_HOST"
+  } > "$runtime_env"
+}
+
+resolve_install_dir_for_runtime() {
+  local default_install_dir
+  default_install_dir="$(detect_repo_root)"
+
+  if [ -n "$INSTALL_DIR_ARG" ]; then
+    INSTALL_DIR="$INSTALL_DIR_ARG"
+  else
+    INSTALL_DIR="$default_install_dir"
+  fi
+
+  INSTALL_DIR="$(absolute_path "$INSTALL_DIR")"
+  require_home_subdir "$INSTALL_DIR"
+}
+
+load_runtime_env() {
+  resolve_install_dir_for_runtime
+  BACKEND_HOST="0.0.0.0"
+  BACKEND_PORT="8000"
+  FRONTEND_HOST="0.0.0.0"
+  FRONTEND_PORT="3000"
+  PUBLIC_HOST="$(detect_public_host)"
+
+  if [ -f "$(runtime_env_file)" ]; then
+    # shellcheck disable=SC1090
+    . "$(runtime_env_file)"
+  fi
+
+  BACKEND_HOST="${BACKEND_HOST_ARG:-$BACKEND_HOST}"
+  BACKEND_PORT="${BACKEND_PORT_ARG:-$BACKEND_PORT}"
+  FRONTEND_HOST="${FRONTEND_HOST_ARG:-$FRONTEND_HOST}"
+  FRONTEND_PORT="${FRONTEND_PORT_ARG:-$FRONTEND_PORT}"
+  PUBLIC_HOST="${PUBLIC_HOST_ARG:-$PUBLIC_HOST}"
+}
+
+is_pid_running() {
+  local pid_file="$1"
+  local pid
+
+  if [ ! -f "$pid_file" ]; then
+    return 1
+  fi
+
+  pid="$(cat "$pid_file" 2>/dev/null || true)"
+  if [ -z "$pid" ]; then
+    return 1
+  fi
+
+  kill -0 "$pid" >/dev/null 2>&1
+}
+
+print_one_service_status() {
+  local service_name="$1"
+  local pid_file="$2"
+  local log_file="$3"
+  local url="$4"
+  local pid
+
+  if is_pid_running "$pid_file"; then
+    pid="$(cat "$pid_file")"
+    printf "%s: running, pid=%s, url=%s, log=%s\n" "$service_name" "$pid" "$url" "$log_file"
+  else
+    printf "%s: stopped, url=%s, log=%s\n" "$service_name" "$url" "$log_file"
+  fi
+}
+
+status_services() {
+  print_script_banner
+  printf "Mode: status\n"
+  load_runtime_env
+
+  if [ ! -d "$INSTALL_DIR" ]; then
+    die "Install directory not found: $INSTALL_DIR"
+  fi
+
+  print_one_service_status "backend" "$(backend_pid_file)" "$(backend_log_file)" "http://$PUBLIC_HOST:$BACKEND_PORT/api/health"
+  print_one_service_status "frontend" "$(frontend_pid_file)" "$(frontend_log_file)" "http://$PUBLIC_HOST:$FRONTEND_PORT"
+}
+
+start_one_service() {
+  local service_name="$1"
+  local pid_file="$2"
+  local log_file="$3"
+  shift 3
+
+  mkdir -p "$(runtime_dir)"
+
+  if is_pid_running "$pid_file"; then
+    printf "%s already running, pid=%s\n" "$service_name" "$(cat "$pid_file")"
+    return
+  fi
+
+  say "Starting $service_name"
+  nohup "$@" > "$log_file" 2>&1 &
+  printf "%s" "$!" > "$pid_file"
+}
+
+start_services() {
+  print_script_banner
+  printf "Mode: start\n"
+  load_runtime_env
+
+  [ -d "$INSTALL_DIR/backend" ] || die "Backend directory not found in $INSTALL_DIR"
+  [ -d "$INSTALL_DIR/frontend" ] || die "Frontend directory not found in $INSTALL_DIR"
+  [ -x "$INSTALL_DIR/backend/.venv/bin/uvicorn" ] || die "Backend venv not found. Run install first."
+  [ -x "$INSTALL_DIR/frontend/node_modules/.bin/next" ] || die "Frontend dependencies not found. Run install first."
+  [ -d "$INSTALL_DIR/frontend/.next" ] || die "Frontend build not found. Run install first."
+
+  write_runtime_env
+
+  (
+    cd "$INSTALL_DIR/backend"
+    start_one_service "backend" "$(backend_pid_file)" "$(backend_log_file)" \
+      "$INSTALL_DIR/backend/.venv/bin/uvicorn" app.main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT"
+  )
+
+  (
+    cd "$INSTALL_DIR/frontend"
+    start_one_service "frontend" "$(frontend_pid_file)" "$(frontend_log_file)" \
+      "$INSTALL_DIR/frontend/node_modules/.bin/next" start --hostname "$FRONTEND_HOST" --port "$FRONTEND_PORT"
+  )
+
+  sleep 1
+  printf "\n"
+  print_one_service_status "backend" "$(backend_pid_file)" "$(backend_log_file)" "http://$PUBLIC_HOST:$BACKEND_PORT/api/health"
+  print_one_service_status "frontend" "$(frontend_pid_file)" "$(frontend_log_file)" "http://$PUBLIC_HOST:$FRONTEND_PORT"
+}
+
+stop_one_service() {
+  local service_name="$1"
+  local pid_file="$2"
+  local pid
+  local waited
+
+  if ! is_pid_running "$pid_file"; then
+    printf "%s already stopped\n" "$service_name"
+    rm -f "$pid_file"
+    return
+  fi
+
+  pid="$(cat "$pid_file")"
+  say "Stopping $service_name pid=$pid"
+  kill "$pid"
+
+  waited=0
+  while kill -0 "$pid" >/dev/null 2>&1 && [ "$waited" -lt 10 ]; do
+    sleep 1
+    waited=$((waited + 1))
+  done
+
+  if kill -0 "$pid" >/dev/null 2>&1; then
+    printf "%s did not exit within 10s; pid=%s\n" "$service_name" "$pid"
+  else
+    rm -f "$pid_file"
+    printf "%s stopped\n" "$service_name"
+  fi
+}
+
+stop_services() {
+  print_script_banner
+  printf "Mode: stop\n"
+  load_runtime_env
+
+  if [ ! -d "$INSTALL_DIR" ]; then
+    die "Install directory not found: $INSTALL_DIR"
+  fi
+
+  stop_one_service "frontend" "$(frontend_pid_file)"
+  stop_one_service "backend" "$(backend_pid_file)"
+}
+
+update_project() {
+  local backend_was_running
+  local frontend_was_running
+
+  print_script_banner
+  printf "Mode: update\n"
+  load_runtime_env
+
+  [ -d "$INSTALL_DIR/.git" ] || die "Git repository not found in $INSTALL_DIR. Run install first."
+  [ -d "$INSTALL_DIR/backend" ] || die "Backend directory not found in $INSTALL_DIR"
+  [ -d "$INSTALL_DIR/frontend" ] || die "Frontend directory not found in $INSTALL_DIR"
+
+  backend_was_running=0
+  frontend_was_running=0
+
+  if is_pid_running "$(backend_pid_file)"; then
+    backend_was_running=1
+  fi
+  if is_pid_running "$(frontend_pid_file)"; then
+    frontend_was_running=1
+  fi
+
+  if [ "$frontend_was_running" = "1" ]; then
+    stop_one_service "frontend" "$(frontend_pid_file)"
+  fi
+  if [ "$backend_was_running" = "1" ]; then
+    stop_one_service "backend" "$(backend_pid_file)"
+  fi
+
+  say "Pulling latest code"
+  git -C "$INSTALL_DIR" pull --ff-only
+
+  say "Updating backend"
+  cd "$INSTALL_DIR/backend"
+  if [ ! -d ".venv" ]; then
+    python3 -m venv .venv
+  fi
+  .venv/bin/pip install --upgrade pip
+  .venv/bin/pip install -r requirements.txt
+  mkdir -p "$INSTALL_DIR/backend/uploads"
+  .venv/bin/python -c "from app.db.sqlite import init_db; init_db(); print('SQLite database initialized')"
+
+  say "Updating frontend"
+  cd "$INSTALL_DIR/frontend"
+  npm install
+  write_frontend_env "$INSTALL_DIR/frontend/.env.local" "http://$PUBLIC_HOST:$BACKEND_PORT"
+  write_runtime_env
+  if [ -z "${NODE_OPTIONS:-}" ]; then
+    export NODE_OPTIONS="--max-old-space-size=2048"
+  else
+    export NODE_OPTIONS="$NODE_OPTIONS --max-old-space-size=2048"
+  fi
+  npm exec next -- build --webpack
+
+  if [ "$backend_was_running" = "1" ] || [ "$frontend_was_running" = "1" ]; then
+    say "Restarting services that were running before update"
+    start_services
+  else
+    say "Update complete. Services were not running before update."
+    printf "Start services with:\n  bash \"%s/scripts/install_ubuntu.sh\" --start\n" "$INSTALL_DIR"
+  fi
+}
+
 uninstall_project() {
   local default_install_dir
   default_install_dir="$(detect_repo_root)"
@@ -298,11 +645,11 @@ main() {
   fi
   INSTALL_DIR="$(absolute_path "$INSTALL_DIR")"
   require_home_subdir "$INSTALL_DIR"
-  prompt BACKEND_HOST "Backend bind host for external access" "0.0.0.0"
-  prompt BACKEND_PORT "Backend port" "8000"
-  prompt FRONTEND_HOST "Frontend bind host for external access" "0.0.0.0"
-  prompt FRONTEND_PORT "Frontend port" "3000"
-  prompt PUBLIC_HOST "Public host/IP used by the browser" "$default_public_host"
+  if [ -n "$BACKEND_HOST_ARG" ]; then BACKEND_HOST="$BACKEND_HOST_ARG"; else prompt BACKEND_HOST "Backend bind host for external access" "0.0.0.0"; fi
+  if [ -n "$BACKEND_PORT_ARG" ]; then BACKEND_PORT="$BACKEND_PORT_ARG"; else prompt BACKEND_PORT "Backend port" "8000"; fi
+  if [ -n "$FRONTEND_HOST_ARG" ]; then FRONTEND_HOST="$FRONTEND_HOST_ARG"; else prompt FRONTEND_HOST "Frontend bind host for external access" "0.0.0.0"; fi
+  if [ -n "$FRONTEND_PORT_ARG" ]; then FRONTEND_PORT="$FRONTEND_PORT_ARG"; else prompt FRONTEND_PORT "Frontend port" "3000"; fi
+  if [ -n "$PUBLIC_HOST_ARG" ]; then PUBLIC_HOST="$PUBLIC_HOST_ARG"; else prompt PUBLIC_HOST "Public host/IP used by the browser" "$default_public_host"; fi
   prompt LLM_PROVIDER_TYPE "LLM provider type" "openai_compatible"
   prompt LLM_BASE_URL "LLM base URL, for example https://api.openai.com/v1"
   prompt LLM_MODEL "Default LLM model" "gpt-4-turbo"
@@ -340,6 +687,7 @@ main() {
   cd "$INSTALL_DIR/frontend"
   npm install
   write_frontend_env "$INSTALL_DIR/frontend/.env.local" "http://$PUBLIC_HOST:$BACKEND_PORT"
+  write_runtime_env
   if [ -z "${NODE_OPTIONS:-}" ]; then
     export NODE_OPTIONS="--max-old-space-size=2048"
   else
@@ -379,6 +727,11 @@ Start frontend in development mode:
   cd "$INSTALL_DIR/frontend"
   npm run dev -- --hostname "$FRONTEND_HOST" --port "$FRONTEND_PORT"
 
+One-line service commands:
+  bash "$INSTALL_DIR/scripts/install_ubuntu.sh" --start
+  bash "$INSTALL_DIR/scripts/install_ubuntu.sh" --status
+  bash "$INSTALL_DIR/scripts/install_ubuntu.sh" --stop
+
 LLM settings were written to:
   $INSTALL_DIR/backend/.env
 
@@ -390,9 +743,26 @@ INFO
 
 parse_args "$@"
 
-if [ "$COMMAND" = "uninstall" ]; then
-  uninstall_project
-  exit 0
-fi
-
-main "$@"
+case "$COMMAND" in
+  install)
+    main "$@"
+    ;;
+  update)
+    update_project
+    ;;
+  start)
+    start_services
+    ;;
+  status)
+    status_services
+    ;;
+  stop)
+    stop_services
+    ;;
+  uninstall)
+    uninstall_project
+    ;;
+  *)
+    die "Unknown command: $COMMAND"
+    ;;
+esac
