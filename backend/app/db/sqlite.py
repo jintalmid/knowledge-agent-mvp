@@ -1,8 +1,28 @@
 import sqlite3
+import json
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import UTC, datetime
 
 from app.core.config import get_settings
+
+MODEL_SCENARIO_DEFINITIONS = [
+    {"scenario": "default_text", "required_tags": ["text"], "is_required": True, "fallback_scenario": None},
+    {"scenario": "file_summary", "required_tags": ["text"], "is_required": False, "fallback_scenario": "default_text"},
+    {"scenario": "agent_planning", "required_tags": ["text", "reasoning"], "is_required": False, "fallback_scenario": "default_text"},
+    {"scenario": "agent_reflection", "required_tags": ["text", "reasoning"], "is_required": False, "fallback_scenario": "default_text"},
+    {"scenario": "final_answer", "required_tags": ["text"], "is_required": False, "fallback_scenario": "default_text"},
+    {"scenario": "text_tool", "required_tags": ["text"], "is_required": False, "fallback_scenario": "default_text"},
+    {"scenario": "excel_code_generation", "required_tags": ["text", "code"], "is_required": False, "fallback_scenario": "default_text"},
+    {"scenario": "excel_code_repair", "required_tags": ["text", "code"], "is_required": False, "fallback_scenario": "default_text"},
+    {"scenario": "excel_result_explanation", "required_tags": ["text"], "is_required": False, "fallback_scenario": "default_text"},
+    {"scenario": "document_parse_vision", "required_tags": ["vision"], "is_required": False, "fallback_scenario": None},
+    {"scenario": "embedding_generation", "required_tags": ["embedding"], "is_required": False, "fallback_scenario": None},
+    {"scenario": "retrieval_rerank", "required_tags": ["rerank"], "is_required": False, "fallback_scenario": None},
+    {"scenario": "ppt_parse", "required_tags": ["vision", "document_parse"], "is_required": False, "fallback_scenario": None},
+    {"scenario": "pdf_image_parse", "required_tags": ["vision", "document_parse"], "is_required": False, "fallback_scenario": None},
+    {"scenario": "ocr", "required_tags": ["ocr"], "is_required": False, "fallback_scenario": None},
+]
 
 
 def get_connection() -> sqlite3.Connection:
@@ -52,6 +72,128 @@ def _deduplicate_task_file_references(connection: sqlite3.Connection) -> None:
             WHERE task_files.physical_file_id = physical_files.id
         )
         """
+    )
+
+
+def _now_iso() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+def _seed_model_scenarios(connection: sqlite3.Connection) -> None:
+    now = _now_iso()
+    for definition in MODEL_SCENARIO_DEFINITIONS:
+        connection.execute(
+            """
+            INSERT INTO model_route_configs (
+                id,
+                scenario,
+                model_id,
+                required_tags_json,
+                is_required,
+                fallback_scenario,
+                enabled,
+                created_at,
+                updated_at
+            )
+            VALUES (?, ?, NULL, ?, ?, ?, 1, ?, ?)
+            ON CONFLICT(scenario) DO NOTHING
+            """,
+            (
+                f"route_{definition['scenario']}",
+                definition["scenario"],
+                json.dumps(definition["required_tags"], ensure_ascii=False),
+                1 if definition["is_required"] else 0,
+                definition["fallback_scenario"],
+                now,
+                now,
+            ),
+        )
+
+
+def _seed_default_model_from_env(connection: sqlite3.Connection) -> None:
+    settings = get_settings()
+    provider_type = (settings.llm_provider_type or "").replace("-", "_")
+    if provider_type != "openai_compatible" or not settings.llm_base_url or not settings.llm_model:
+        return
+
+    now = _now_iso()
+    provider_id = "provider_env_default"
+    model_id = "model_env_default_text"
+    connection.execute(
+        """
+        INSERT INTO model_providers (
+            id,
+            name,
+            provider_type,
+            base_url,
+            api_key_env_name,
+            api_key,
+            enabled,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, NULL, 1, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            provider_type = excluded.provider_type,
+            base_url = excluded.base_url,
+            api_key_env_name = excluded.api_key_env_name,
+            updated_at = excluded.updated_at
+        """,
+        (
+            provider_id,
+            "Default .env OpenAI-compatible provider",
+            provider_type,
+            settings.llm_base_url,
+            "LLM_API_KEY",
+            now,
+            now,
+        ),
+    )
+    connection.execute(
+        """
+        INSERT INTO model_configs (
+            id,
+            provider_id,
+            display_name,
+            model_name,
+            model_types_json,
+            capability_tags_json,
+            context_window,
+            output_window,
+            enabled,
+            is_default_text_model,
+            last_test_status,
+            last_test_message,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 1, 1, NULL, NULL, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            provider_id = excluded.provider_id,
+            model_name = excluded.model_name,
+            enabled = 1,
+            is_default_text_model = 1,
+            updated_at = excluded.updated_at
+        """,
+        (
+            model_id,
+            provider_id,
+            f"{settings.llm_model} (.env default)",
+            settings.llm_model,
+            json.dumps(["text"], ensure_ascii=False),
+            json.dumps(["text", "reasoning", "code"], ensure_ascii=False),
+            now,
+            now,
+        ),
+    )
+    connection.execute(
+        """
+        UPDATE model_route_configs
+        SET model_id = COALESCE(model_id, ?),
+            updated_at = ?
+        WHERE scenario = 'default_text'
+        """,
+        (model_id, now),
     )
 
 
@@ -160,11 +302,76 @@ def init_db() -> None:
         connection.execute("CREATE INDEX IF NOT EXISTS idx_parsed_contents_physical_file_id ON parsed_contents(physical_file_id)")
         connection.execute(
             """
+            CREATE TABLE IF NOT EXISTS model_providers (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                provider_type TEXT NOT NULL,
+                base_url TEXT NOT NULL,
+                api_key_env_name TEXT,
+                api_key TEXT,
+                enabled INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_model_providers_provider_type ON model_providers(provider_type)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_model_providers_enabled ON model_providers(enabled)")
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS model_configs (
+                id TEXT PRIMARY KEY,
+                provider_id TEXT NOT NULL,
+                display_name TEXT NOT NULL,
+                model_name TEXT NOT NULL,
+                model_types_json TEXT NOT NULL,
+                capability_tags_json TEXT NOT NULL,
+                context_window INTEGER,
+                output_window INTEGER,
+                enabled INTEGER NOT NULL DEFAULT 1,
+                is_default_text_model INTEGER NOT NULL DEFAULT 0,
+                last_test_status TEXT,
+                last_test_message TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(provider_id) REFERENCES model_providers(id) ON DELETE CASCADE
+            )
+            """
+        )
+        _ensure_column(connection, "model_configs", "output_window", "INTEGER")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_model_configs_provider_id ON model_configs(provider_id)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_model_configs_enabled ON model_configs(enabled)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_model_configs_default_text ON model_configs(is_default_text_model)")
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS model_route_configs (
+                id TEXT PRIMARY KEY,
+                scenario TEXT NOT NULL UNIQUE,
+                model_id TEXT,
+                required_tags_json TEXT NOT NULL,
+                is_required INTEGER NOT NULL DEFAULT 0,
+                fallback_scenario TEXT,
+                enabled INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(model_id) REFERENCES model_configs(id) ON DELETE SET NULL
+            )
+            """
+        )
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_model_route_configs_scenario ON model_route_configs(scenario)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_model_route_configs_model_id ON model_route_configs(model_id)")
+        _seed_model_scenarios(connection)
+        _seed_default_model_from_env(connection)
+        connection.execute(
+            """
             CREATE TABLE IF NOT EXISTS llm_call_logs (
                 id TEXT PRIMARY KEY,
                 task_id TEXT,
                 agent_run_id TEXT,
                 iteration_id TEXT,
+                scenario TEXT,
+                provider_id TEXT,
+                model_id TEXT,
                 module_name TEXT NOT NULL,
                 provider_type TEXT NOT NULL,
                 model_name TEXT NOT NULL,
@@ -179,9 +386,15 @@ def init_db() -> None:
         )
         _ensure_column(connection, "llm_call_logs", "agent_run_id", "TEXT")
         _ensure_column(connection, "llm_call_logs", "iteration_id", "TEXT")
+        _ensure_column(connection, "llm_call_logs", "scenario", "TEXT")
+        _ensure_column(connection, "llm_call_logs", "provider_id", "TEXT")
+        _ensure_column(connection, "llm_call_logs", "model_id", "TEXT")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_llm_call_logs_task_id ON llm_call_logs(task_id)")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_llm_call_logs_agent_run_id ON llm_call_logs(agent_run_id)")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_llm_call_logs_iteration_id ON llm_call_logs(iteration_id)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_llm_call_logs_scenario ON llm_call_logs(scenario)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_llm_call_logs_provider_id ON llm_call_logs(provider_id)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_llm_call_logs_model_id ON llm_call_logs(model_id)")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_llm_call_logs_created_at ON llm_call_logs(created_at)")
         connection.execute(
             """

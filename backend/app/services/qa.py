@@ -234,6 +234,7 @@ def ask_task_question(connection: Connection, task_id: str, question_text: str) 
     llm_result = llm_service.call_llm(
         connection,
         task_id=task_id,
+        scenario="final_answer",
         module_name="M09_TEXT_QA_PROCESSING",
         system_prompt=system_prompt,
         user_prompt=user_prompt,

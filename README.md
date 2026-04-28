@@ -7,7 +7,7 @@
 1. 创建任务空间。
 2. 上传文件并自动解析。
 3. 生成文件摘要。
-4. 通过统一 LLM Service 调用模型并记录日志。
+4. 通过模型注册表和场景路由选择模型，并记录 LLM 调用日志。
 5. 由 Agent Runner 按 `plan -> tool call -> observation -> reflection -> decision` 循环执行。
 6. 调用 `read_text_file` 或 `analyze_excel_file` 工具。
 7. 保存最终 Markdown 答案、来源和每轮运行过程。
@@ -28,7 +28,7 @@
 - Backend: FastAPI, Python
 - Database: SQLite
 - File Storage: `backend/uploads`
-- LLM: OpenAI-compatible API adapter
+- LLM: OpenAI-compatible Provider, model registry, scenario routing
 - Excel Sandbox: LLM 生成 Python，经静态检查后在受限临时目录中执行
 
 ## 目录结构
@@ -76,7 +76,7 @@ wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/s
 - 从 GitHub 下载项目。
 - 安装 Python、Node.js、npm 等依赖。
 - 创建后端虚拟环境并安装 `requirements.txt`。
-- 生成 `backend/.env`，配置 LLM 地址、API Key、默认模型和超时时间。
+- 生成 `backend/.env`，配置初始 OpenAI-compatible Provider、API Key、默认文本模型和超时时间。
 - 生成 `frontend/.env.local`，配置前端访问后端的地址。
 - 初始化 SQLite 数据库。
 - 构建前端，并输出前后端启动命令。
@@ -139,9 +139,16 @@ wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/s
 wget -qO- https://raw.githubusercontent.com/jintalmid/knowledge-agent-mvp/main/scripts/install_ubuntu.sh | bash -s -- --update --install-dir "$HOME/apps/knowledge-agent-mvp"
 ```
 
-## 命令行测试 LLM
+## 命令行诊断 LLM
 
-如果需要绕过前端页面，直接验证 `backend/.env` 里的 LLM 配置：
+日常新增、编辑和测试模型请优先使用前端：
+
+- `/settings/models`: 管理 Provider 和 Provider 下的模型，并测试单个模型。
+- `/settings/model-routing`: 为 `file_summary`、`agent_planning`、`excel_code_generation` 等业务场景选择模型，并测试路由。
+
+`scripts/test_llm_env.sh` 仍然保留，但定位是底层排障脚本。它只读取 `backend/.env`，直接测试 OpenAI-compatible `/chat/completions` 连通性，不读取数据库里的模型注册表和场景路由。
+
+当页面显示模型不可用、WSL/Ubuntu 网络不通、或者怀疑 `.env` 没被正确读取时，可以绕过前端和数据库直接验证：
 
 ```bash
 cd "$HOME/knowledge-agent-mvp"
@@ -221,7 +228,7 @@ uvicorn app.main:app --reload --port 8000
 http://localhost:8000
 ```
 
-### 2. 配置 LLM
+### 2. 配置初始 LLM
 
 编辑 `backend/.env`：
 
@@ -233,7 +240,13 @@ LLM_MODEL=your-model
 LLM_TIMEOUT_SECONDS=180
 ```
 
-没有 LLM 配置时，摘要、工具读取、Agent Runner、Excel 代码生成都会明确报错，不做本地 fallback。
+启动后端时，系统会把这组 `.env` 配置种子化为一个默认 Provider 和一个 `default_text` 模型。之后更推荐在页面中维护模型：
+
+- `/settings/models`: 新增 Provider、在 Provider 下新增模型、设置模型类型、能力 tags、context/output window、测试模型。
+- `/settings/model-routing`: 为不同业务场景选择专用模型；未配置专用模型时回退到 `default_text`。
+- `/settings/llm`: legacy `.env` 状态查看和诊断入口。
+
+没有可用的 `default_text` 模型时，摘要、工具读取、Agent Runner、Excel 代码生成都会明确报错，不做本地 fallback。
 
 ### 3. 启动前端
 
@@ -267,7 +280,9 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 npm run dev
 - `/tasks/{taskId}/runs/{runId}`: Agent Run 详情
 - `/tasks/{taskId}/results`: 历史结果与来源
 - `/tasks/{taskId}/excel`: 单文件 Excel 分析
-- `/settings/llm`: LLM 配置状态与测试
+- `/settings/models`: Provider 与模型管理
+- `/settings/model-routing`: 场景模型路由
+- `/settings/llm`: legacy `.env` 配置状态与诊断
 - `/debug/llm-logs`: LLM 调用日志
 
 ## 常用 API
@@ -303,6 +318,26 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 npm run dev
 - `GET /api/tasks/{task_id}/summaries`
 - `GET /api/task-files/{task_file_id}/summary`
 
+模型与路由：
+
+- `GET /api/model-providers`
+- `POST /api/model-providers`
+- `GET /api/model-providers/{provider_id}`
+- `PATCH /api/model-providers/{provider_id}`
+- `DELETE /api/model-providers/{provider_id}`
+- `GET /api/models`
+- `POST /api/models`
+- `GET /api/models/{model_id}`
+- `PATCH /api/models/{model_id}`
+- `DELETE /api/models/{model_id}`
+- `POST /api/models/{model_id}/test`
+- `GET /api/model-scenarios`
+- `GET /api/model-routes`
+- `PATCH /api/model-routes/{scenario}`
+- `POST /api/model-routes/{scenario}/test`
+- `GET /api/settings/llm`
+- `POST /api/settings/llm/test`
+
 Agent：
 
 - `GET /api/tools`
@@ -325,7 +360,7 @@ Agent：
 - M01 身份与权限预留
 - M02 Agent 任务空间
 - M03 文件资产与解析支撑
-- M04 LLM Service 与调用日志
+- M04 模型注册、模型路由、LLM Service 与调用日志
 - M05 Tool Registry Service
 - M06 Agent Run 数据模型
 - M07 Agent Runner Service

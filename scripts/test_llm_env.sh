@@ -11,7 +11,10 @@ TIMEOUT_OVERRIDE=""
 
 usage() {
   cat <<USAGE
-Test LLM configuration from backend/.env.
+Diagnose raw OpenAI-compatible LLM connectivity from backend/.env.
+
+This script does not read the database model registry or scenario routes.
+Use /settings/models for model tests and /settings/model-routing for route tests.
 
 Usage:
   bash scripts/test_llm_env.sh

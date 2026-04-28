@@ -8,6 +8,7 @@
 
 - 所有 LLM 调用写入 `llm_call_logs`。
 - 日志可关联 `task_id`、`agent_run_id`、`iteration_id`。
+- 日志记录 `scenario`、`provider_id`、`model_id`，用于排查模型路由。
 - Debug 页面展示最近日志。
 - 日志详情可查看 prompt preview、response preview、错误和耗时。
 
@@ -19,6 +20,9 @@
 - `task_id`
 - `agent_run_id`
 - `iteration_id`
+- `scenario`
+- `provider_id`
+- `model_id`
 - `module_name`
 - `provider_type`
 - `model_name`

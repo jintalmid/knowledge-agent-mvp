@@ -18,6 +18,7 @@ def test_llm() -> LlmTestRead:
         result = llm_service.call_llm(
             connection,
             task_id=None,
+            scenario="default_text",
             module_name="M13_LLM_CALL_LOGGING",
             system_prompt="You are a health-check assistant. Reply briefly.",
             user_prompt="Return the word ok and a short confirmation.",

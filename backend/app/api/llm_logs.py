@@ -8,9 +8,13 @@ router = APIRouter(prefix="/llm-logs", tags=["llm-logs"])
 
 
 @router.get("", response_model=list[LlmCallLogRead])
-def list_llm_logs() -> list[LlmCallLogRead]:
+def list_llm_logs(
+    scenario: str | None = None,
+    model_id: str | None = None,
+    provider_id: str | None = None,
+) -> list[LlmCallLogRead]:
     with db_session() as connection:
-        return llm_service.list_logs(connection)
+        return llm_service.list_logs(connection, scenario=scenario, model_id=model_id, provider_id=provider_id)
 
 
 @router.get("/{log_id}", response_model=LlmCallLogRead)

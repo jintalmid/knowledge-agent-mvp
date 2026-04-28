@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Pagination from "@/components/Pagination";
-import { getLlmLogs, LlmCallLog } from "@/lib/api";
+import { getLlmLogs, getModelProviders, getModels, getModelScenarios, LlmCallLog, ModelConfig, ModelProvider, ModelScenario } from "@/lib/api";
 import { usePagination } from "@/lib/usePagination";
 
 type ExpandedPanel = "request" | "response";
@@ -27,6 +27,10 @@ function formatContent(value: string | null | undefined) {
 
 export default function LlmLogsClient() {
   const [logs, setLogs] = useState<LlmCallLog[]>([]);
+  const [scenarios, setScenarios] = useState<ModelScenario[]>([]);
+  const [models, setModels] = useState<ModelConfig[]>([]);
+  const [providers, setProviders] = useState<ModelProvider[]>([]);
+  const [filters, setFilters] = useState({ scenario: "", model_id: "", provider_id: "" });
   const [expandedPanels, setExpandedPanels] = useState<Record<string, ExpandedPanel | null>>({});
   const [error, setError] = useState<string | null>(null);
   const logPagination = usePagination(logs, 10);
@@ -34,7 +38,20 @@ export default function LlmLogsClient() {
   async function refresh() {
     setError(null);
     try {
-      setLogs(await getLlmLogs());
+      const [loadedLogs, loadedScenarios, loadedModels, loadedProviders] = await Promise.all([
+        getLlmLogs({
+          scenario: filters.scenario || undefined,
+          model_id: filters.model_id || undefined,
+          provider_id: filters.provider_id || undefined,
+        }),
+        getModelScenarios(),
+        getModels(),
+        getModelProviders(),
+      ]);
+      setLogs(loadedLogs);
+      setScenarios(loadedScenarios);
+      setModels(loadedModels);
+      setProviders(loadedProviders);
     } catch (err) {
       setError(err instanceof Error ? err.message : "日志加载失败");
     }
@@ -42,7 +59,7 @@ export default function LlmLogsClient() {
 
   useEffect(() => {
     refresh();
-  }, []);
+  }, [filters.scenario, filters.model_id, filters.provider_id]);
 
   function togglePanel(logId: string, panel: ExpandedPanel) {
     setExpandedPanels((current) => ({
@@ -64,6 +81,35 @@ export default function LlmLogsClient() {
       </header>
 
       {error ? <div className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
+
+      <section className="mb-5 grid gap-3 rounded-md border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-4">
+        <label className="grid gap-1 text-sm">
+          <span className="text-xs font-medium text-slate-500">scenario</span>
+          <select className="rounded-md border border-slate-300 px-3 py-2" value={filters.scenario} onChange={(event) => setFilters({ ...filters, scenario: event.target.value })}>
+            <option value="">全部</option>
+            {scenarios.map((scenario) => <option key={scenario.scenario} value={scenario.scenario}>{scenario.scenario}</option>)}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="text-xs font-medium text-slate-500">model</span>
+          <select className="rounded-md border border-slate-300 px-3 py-2" value={filters.model_id} onChange={(event) => setFilters({ ...filters, model_id: event.target.value })}>
+            <option value="">全部</option>
+            {models.map((model) => <option key={model.id} value={model.id}>{model.display_name}</option>)}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="text-xs font-medium text-slate-500">provider</span>
+          <select className="rounded-md border border-slate-300 px-3 py-2" value={filters.provider_id} onChange={(event) => setFilters({ ...filters, provider_id: event.target.value })}>
+            <option value="">全部</option>
+            {providers.map((provider) => <option key={provider.id} value={provider.id}>{provider.name}</option>)}
+          </select>
+        </label>
+        <div className="flex items-end">
+          <button className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => setFilters({ scenario: "", model_id: "", provider_id: "" })} type="button">
+            清空筛选
+          </button>
+        </div>
+      </section>
 
       <section className="grid gap-3">
         {logPagination.paginatedItems.map((log) => {
@@ -88,6 +134,10 @@ export default function LlmLogsClient() {
                   </div>
                   <p className="mt-2 text-sm font-semibold text-slate-950">{log.module_name}</p>
                   <div className="mt-3 grid gap-2 text-sm text-slate-600 md:grid-cols-2">
+                    <p>
+                      <span className="text-slate-400">Scenario：</span>
+                      <span className="font-mono text-xs">{log.scenario || "无"}</span>
+                    </p>
                     <p>
                       <span className="text-slate-400">任务：</span>
                       {log.task_id ? (
@@ -114,6 +164,9 @@ export default function LlmLogsClient() {
                   <p className="mt-3 font-mono text-xs text-slate-500">
                     {log.provider_type} / {log.model_name} / {log.latency_ms}ms
                     {log.security_level ? ` / ${log.security_level}` : ""}
+                  </p>
+                  <p className="mt-1 font-mono text-xs text-slate-400">
+                    provider_id: {log.provider_id || "无"} / model_id: {log.model_id || "无"}
                   </p>
                 </div>
                 <div className="flex flex-col items-start gap-3 sm:items-end">

@@ -238,6 +238,7 @@ def _call_read_text_file(connection: Connection, payload: dict[str, Any]) -> Too
         task_id=task_id,
         agent_run_id=agent_run_id,
         iteration_id=iteration_id,
+        scenario="text_tool",
         module_name="M09_V03_TOOL_READ_TEXT_FILE",
         system_prompt=system_prompt,
         user_prompt=user_prompt,

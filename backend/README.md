@@ -8,7 +8,7 @@ FastAPI 后端负责 `knowledge-agent-mvp` 的数据模型、文件处理、LLM 
 - 提供任务空间 CRUD。
 - 管理上传文件、物理文件资产和任务文件引用。
 - 上传成功后自动调用解析服务解析文本、PDF、CSV、Excel。
-- 调用统一 LLM Service 生成摘要、工具 observation、Excel 分析代码、Agent plan/reflection/final answer。
+- 通过模型注册表和场景路由调用统一 LLM Service，生成摘要、工具 observation、Excel 分析代码、Agent plan/reflection/final answer。
 - 记录所有 LLM 调用日志。
 - 注册并执行 Agent 工具。
 - 执行 Agent Run 主循环。
@@ -25,7 +25,7 @@ cp .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
 
-## 环境变量
+## 环境变量与模型配置
 
 ```env
 LLM_PROVIDER_TYPE=openai_compatible
@@ -42,6 +42,10 @@ LLM_TIMEOUT_SECONDS=180
 - `LLM_API_KEY` 是服务商密钥。
 - `LLM_MODEL` 是模型名。
 - `LLM_TIMEOUT_SECONDS` 控制单次 LLM HTTP 调用超时。
+- 后端启动时会把 `.env` 配置种子化为默认 Provider 和 `default_text` 模型。
+- 正式业务调用不直接读 `LLM_MODEL`，而是通过 `model_route_configs.scenario` 路由到具体模型。
+- 如果某个业务场景没有专用模型，会 fallback 到 `default_text`；如果 `default_text` 不可用，会明确报错。
+- `scripts/test_llm_env.sh` 只用于底层 `.env` 和网络诊断，不代表数据库模型路由一定可用。
 
 ## 主要目录
 
@@ -67,6 +71,9 @@ uploads/      SHA256 分目录保存的本地文件
 - `document_chunks`
 - `embedding_records`
 - `retrieval_settings`
+- `model_providers`
+- `model_configs`
+- `model_route_configs`
 - `questions`
 - `answers`
 - `excel_analysis_runs`
@@ -82,8 +89,23 @@ uploads/      SHA256 分目录保存的本地文件
 - `GET /api/health`
 - `GET /api/modules`
 
-LLM：
+模型与 LLM：
 
+- `GET /api/model-providers`
+- `POST /api/model-providers`
+- `GET /api/model-providers/{provider_id}`
+- `PATCH /api/model-providers/{provider_id}`
+- `DELETE /api/model-providers/{provider_id}`
+- `GET /api/models`
+- `POST /api/models`
+- `GET /api/models/{model_id}`
+- `PATCH /api/models/{model_id}`
+- `DELETE /api/models/{model_id}`
+- `POST /api/models/{model_id}/test`
+- `GET /api/model-scenarios`
+- `GET /api/model-routes`
+- `PATCH /api/model-routes/{scenario}`
+- `POST /api/model-routes/{scenario}/test`
 - `GET /api/settings/llm`
 - `POST /api/settings/llm/test`
 - `GET /api/llm-logs`
@@ -145,6 +167,7 @@ LLM：
 ## 服务边界
 
 - `services/llm.py`: 统一 LLM Service 和调用日志。
+- `services/model_registry.py`: Provider、模型、scenario 路由和 default_text fallback。
 - `services/tool_registry.py`: 工具注册和工具调用。
 - `services/agent_runner.py`: Agent Run 主循环。
 - `services/excel_analysis.py`: Excel 代码生成、安全检查、受限执行。
@@ -160,12 +183,14 @@ LLM：
 python -m compileall app
 curl http://localhost:8000/api/health
 curl http://localhost:8000/api/modules
-curl http://localhost:8000/api/settings/llm
+curl http://localhost:8000/api/models
+curl http://localhost:8000/api/model-routes
 ```
 
 ## 注意
 
 - 不要提交 `backend/.env`。
 - 所有 LLM 调用必须走 `services/llm.py`。
+- 所有 LLM 调用必须传入 `scenario`，由 `services/model_registry.py` 解析模型。
 - 所有 Agent 工具必须通过 `services/tool_registry.py` 注册。
 - Excel 代码执行必须经过静态检查和受限子进程。

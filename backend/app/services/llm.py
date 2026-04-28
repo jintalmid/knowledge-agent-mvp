@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 
 from app.core.config import get_settings
 from app.schemas.llm import LlmCallLogRead, LlmSettingsRead
+from app.services import model_registry
 
 
 @dataclass
@@ -17,6 +18,9 @@ class LlmResult:
     log_id: str
     provider_type: str
     model_name: str
+    provider_id: str | None = None
+    model_id: str | None = None
+    scenario: str | None = None
 
 
 def _now_iso() -> str:
@@ -51,14 +55,7 @@ LOG_SELECT_SQL = """
 def get_llm_settings() -> LlmSettingsRead:
     settings = get_settings()
     provider_type = (settings.llm_provider_type or "").replace("-", "_") or None
-    ready = all(
-        [
-            provider_type == "openai_compatible",
-            settings.llm_base_url,
-            settings.llm_api_key,
-            settings.llm_model,
-        ]
-    )
+    ready = bool(provider_type == "openai_compatible" and settings.llm_base_url and settings.llm_api_key and settings.llm_model)
     return LlmSettingsRead(
         provider_type=provider_type,
         config_source="backend/.env; process environment variables can override same-name settings",
@@ -77,6 +74,9 @@ def _insert_log(
     task_id: str | None,
     agent_run_id: str | None,
     iteration_id: str | None,
+    scenario: str | None,
+    provider_id: str | None,
+    model_id: str | None,
     module_name: str,
     provider_type: str,
     model_name: str,
@@ -94,6 +94,9 @@ def _insert_log(
             task_id,
             agent_run_id,
             iteration_id,
+            scenario,
+            provider_id,
+            model_id,
             module_name,
             provider_type,
             model_name,
@@ -104,13 +107,16 @@ def _insert_log(
             latency_ms,
             created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             log_id,
             task_id,
             agent_run_id,
             iteration_id,
+            scenario,
+            provider_id,
+            model_id,
             module_name,
             provider_type,
             model_name,
@@ -139,15 +145,42 @@ def call_llm(
     task_id: str | None,
     agent_run_id: str | None = None,
     iteration_id: str | None = None,
+    scenario: str = "default_text",
+    model_id_override: str | None = None,
     module_name: str,
     system_prompt: str,
     user_prompt: str,
 ) -> LlmResult:
-    settings = get_settings()
-    provider_type = (settings.llm_provider_type or "unconfigured").replace("-", "_")
-    model_name = settings.llm_model or "unconfigured"
     prompt = f"{system_prompt}\n\n{user_prompt}"
     started_at = time.perf_counter()
+    try:
+        if model_id_override:
+            resolved = model_registry.resolve_model_by_id(connection, model_id_override, scenario=scenario)
+        else:
+            resolved = model_registry.resolve_model_for_scenario(connection, scenario)
+    except HTTPException as exc:
+        latency_ms = int((time.perf_counter() - started_at) * 1000)
+        _insert_log(
+            connection=connection,
+            task_id=task_id,
+            agent_run_id=agent_run_id,
+            iteration_id=iteration_id,
+            scenario=scenario,
+            provider_id=None,
+            model_id=None,
+            module_name=module_name,
+            provider_type="unconfigured",
+            model_name="unconfigured",
+            prompt=prompt,
+            response=None,
+            status_value="failed",
+            error_message=str(exc.detail),
+            latency_ms=latency_ms,
+        )
+        raise
+
+    provider_type = resolved.provider_type.replace("-", "_")
+    model_name = resolved.model_name
 
     def fail(message: str, code: int = status.HTTP_400_BAD_REQUEST) -> None:
         latency_ms = int((time.perf_counter() - started_at) * 1000)
@@ -156,6 +189,9 @@ def call_llm(
             task_id=task_id,
             agent_run_id=agent_run_id,
             iteration_id=iteration_id,
+            scenario=scenario,
+            provider_id=resolved.provider_id,
+            model_id=resolved.model_id,
             module_name=module_name,
             provider_type=provider_type,
             model_name=model_name,
@@ -168,30 +204,30 @@ def call_llm(
         raise HTTPException(status_code=code, detail=message)
 
     if provider_type != "openai_compatible":
-        fail("LLM_PROVIDER_TYPE must be openai_compatible")
-    if not settings.llm_base_url:
-        fail("LLM_BASE_URL is not configured")
-    if not settings.llm_api_key:
-        fail("LLM_API_KEY is not configured")
-    if not settings.llm_model:
-        fail("LLM_MODEL is not configured")
+        fail(f"provider_type is reserved but not implemented: {provider_type}")
+    if not resolved.base_url:
+        fail("LLM base_url is not configured")
+    if not resolved.api_key:
+        fail("LLM API key is not configured")
+    if not resolved.model_name:
+        fail("LLM model_name is not configured")
 
     try:
         response = httpx.post(
-            _chat_completions_url(settings.llm_base_url),
+            _chat_completions_url(resolved.base_url),
             headers={
-                "Authorization": f"Bearer {settings.llm_api_key}",
+                "Authorization": f"Bearer {resolved.api_key}",
                 "Content-Type": "application/json",
             },
             json={
-                "model": settings.llm_model,
+                "model": resolved.model_name,
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
                 "temperature": 0.2,
             },
-            timeout=settings.llm_timeout_seconds,
+            timeout=get_settings().llm_timeout_seconds,
         )
         response.raise_for_status()
         payload = response.json()
@@ -205,6 +241,9 @@ def call_llm(
         task_id=task_id,
         agent_run_id=agent_run_id,
         iteration_id=iteration_id,
+        scenario=scenario,
+        provider_id=resolved.provider_id,
+        model_id=resolved.model_id,
         module_name=module_name,
         provider_type=provider_type,
         model_name=model_name,
@@ -214,11 +253,37 @@ def call_llm(
         error_message=None,
         latency_ms=latency_ms,
     )
-    return LlmResult(text=text, log_id=log_id, provider_type=provider_type, model_name=model_name)
+    return LlmResult(
+        text=text,
+        log_id=log_id,
+        provider_type=provider_type,
+        model_name=model_name,
+        provider_id=resolved.provider_id,
+        model_id=resolved.model_id,
+        scenario=scenario,
+    )
 
 
-def list_logs(connection: Connection) -> list[LlmCallLogRead]:
-    rows = connection.execute(f"{LOG_SELECT_SQL} ORDER BY l.created_at DESC LIMIT 200").fetchall()
+def list_logs(
+    connection: Connection,
+    *,
+    scenario: str | None = None,
+    model_id: str | None = None,
+    provider_id: str | None = None,
+) -> list[LlmCallLogRead]:
+    clauses = []
+    params: list[str] = []
+    if scenario:
+        clauses.append("l.scenario = ?")
+        params.append(scenario)
+    if model_id:
+        clauses.append("l.model_id = ?")
+        params.append(model_id)
+    if provider_id:
+        clauses.append("l.provider_id = ?")
+        params.append(provider_id)
+    where_sql = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+    rows = connection.execute(f"{LOG_SELECT_SQL}{where_sql} ORDER BY l.created_at DESC LIMIT 200", params).fetchall()
     return [_row_to_log(row) for row in rows]
 
 

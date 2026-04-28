@@ -15,7 +15,7 @@
 | M01 | 身份与权限预留 | reserved | [active/M01_V03_AUTH_PERMISSION_PLACEHOLDER.md](active/M01_V03_AUTH_PERMISSION_PLACEHOLDER.md) |
 | M02 | Agent 任务空间 | implemented | [active/M02_V03_AGENT_WORKSPACE.md](active/M02_V03_AGENT_WORKSPACE.md) |
 | M03 | 文件资产与解析支撑 | supporting | [active/M03_V03_FILE_CONTEXT_SUPPORT.md](active/M03_V03_FILE_CONTEXT_SUPPORT.md) |
-| M04 | LLM Service 与调用日志 | implemented | [active/M04_V03_LLM_SERVICE_LOGGING.md](active/M04_V03_LLM_SERVICE_LOGGING.md) |
+| M04 | 模型管理与模型路由 | implemented | [active/M04_MODEL_REGISTRY_ROUTING.md](active/M04_MODEL_REGISTRY_ROUTING.md) |
 | M05 | Tool Registry Service | implemented | [active/M05_V03_TOOL_REGISTRY.md](active/M05_V03_TOOL_REGISTRY.md) |
 | M06 | Agent Run 数据模型 | implemented | [active/M06_V03_AGENT_RUN_MODEL.md](active/M06_V03_AGENT_RUN_MODEL.md) |
 | M07 | Agent Runner Service | implemented | [active/M07_V03_AGENT_RUNNER_SERVICE.md](active/M07_V03_AGENT_RUNNER_SERVICE.md) |
@@ -33,7 +33,7 @@ M00 项目基座
   -> M01 默认身份上下文
   -> M02 Agent 任务空间
       -> M03 文件资产、自动解析、摘要上下文
-      -> M04 LLM Service 与调用日志
+      -> M04 模型管理、模型路由与 LLM Service
       -> M06 Agent Run / Iteration / Observation 数据模型
       -> M05 Tool Registry
           -> M09 read_text_file

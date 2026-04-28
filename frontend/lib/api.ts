@@ -131,6 +131,9 @@ export type LlmCallLog = {
   security_level: string | null;
   agent_run_id: string | null;
   iteration_id: string | null;
+  scenario: string | null;
+  provider_id: string | null;
+  model_id: string | null;
   module_name: string;
   provider_type: string;
   model_name: string;
@@ -140,6 +143,109 @@ export type LlmCallLog = {
   error_message: string | null;
   latency_ms: number;
   created_at: string;
+};
+
+export type ModelProvider = {
+  id: string;
+  name: string;
+  provider_type: string;
+  base_url: string;
+  api_key_env_name: string | null;
+  api_key_configured: boolean;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ModelProviderPayload = {
+  name: string;
+  provider_type: string;
+  base_url: string;
+  api_key_env_name?: string | null;
+  api_key?: string | null;
+  enabled: boolean;
+};
+
+export type ModelConfig = {
+  id: string;
+  provider_id: string;
+  provider_name: string | null;
+  provider_type: string | null;
+  display_name: string;
+  model_name: string;
+  model_types_json: string[];
+  capability_tags_json: string[];
+  context_window: number | null;
+  output_window: number | null;
+  enabled: boolean;
+  is_default_text_model: boolean;
+  last_test_status: string | null;
+  last_test_message: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ModelConfigPayload = {
+  provider_id: string;
+  display_name: string;
+  model_name: string;
+  model_types_json: string[];
+  capability_tags_json: string[];
+  context_window?: number | null;
+  output_window?: number | null;
+  enabled: boolean;
+  is_default_text_model: boolean;
+};
+
+export type ModelTestResult = {
+  status: string;
+  message: string;
+  response_preview: string | null;
+  log_id: string | null;
+};
+
+export type ModelScenario = {
+  scenario: string;
+  required_tags_json: string[];
+  is_required: boolean;
+  fallback_scenario: string | null;
+  description: string;
+};
+
+export type ModelRoute = {
+  id: string;
+  scenario: string;
+  model_id: string | null;
+  model_display_name: string | null;
+  model_name: string | null;
+  provider_id: string | null;
+  provider_name: string | null;
+  required_tags_json: string[];
+  is_required: boolean;
+  fallback_scenario: string | null;
+  enabled: boolean;
+  health_status: string;
+  health_message: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ModelRoutePayload = Partial<{
+  model_id: string | null;
+  required_tags_json: string[];
+  is_required: boolean;
+  fallback_scenario: string | null;
+  enabled: boolean;
+}>;
+
+export type ModelRouteTestResult = {
+  scenario: string;
+  resolved_model_id: string | null;
+  resolved_provider_id: string | null;
+  status: string;
+  message: string;
+  response_preview: string | null;
+  log_id: string | null;
 };
 
 export type RetrievalMode = "summary_only" | "chunk_text" | "embedding" | "hybrid";
@@ -546,12 +652,91 @@ export async function testLlm(): Promise<LlmTestResult> {
   });
 }
 
-export async function getLlmLogs(): Promise<LlmCallLog[]> {
-  return requestJson<LlmCallLog[]>("/api/llm-logs");
+export async function getLlmLogs(filters?: { scenario?: string; model_id?: string; provider_id?: string }): Promise<LlmCallLog[]> {
+  const params = new URLSearchParams();
+  if (filters?.scenario) params.set("scenario", filters.scenario);
+  if (filters?.model_id) params.set("model_id", filters.model_id);
+  if (filters?.provider_id) params.set("provider_id", filters.provider_id);
+  return requestJson<LlmCallLog[]>(`/api/llm-logs${params.toString() ? `?${params.toString()}` : ""}`);
 }
 
 export async function getLlmLog(logId: string): Promise<LlmCallLog> {
   return requestJson<LlmCallLog>(`/api/llm-logs/${logId}`);
+}
+
+export async function getModelProviders(): Promise<ModelProvider[]> {
+  return requestJson<ModelProvider[]>("/api/model-providers");
+}
+
+export async function createModelProvider(payload: ModelProviderPayload): Promise<ModelProvider> {
+  return requestJson<ModelProvider>("/api/model-providers", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateModelProvider(providerId: string, payload: Partial<ModelProviderPayload>): Promise<ModelProvider> {
+  return requestJson<ModelProvider>(`/api/model-providers/${providerId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteModelProvider(providerId: string): Promise<void> {
+  const response = await fetch(apiUrl(`/api/model-providers/${providerId}`), { method: "DELETE", cache: "no-store" });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `Request failed: ${response.status}`);
+  }
+}
+
+export async function getModels(): Promise<ModelConfig[]> {
+  return requestJson<ModelConfig[]>("/api/models");
+}
+
+export async function createModel(payload: ModelConfigPayload): Promise<ModelConfig> {
+  return requestJson<ModelConfig>("/api/models", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateModel(modelId: string, payload: Partial<ModelConfigPayload>): Promise<ModelConfig> {
+  return requestJson<ModelConfig>(`/api/models/${modelId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteModel(modelId: string): Promise<void> {
+  const response = await fetch(apiUrl(`/api/models/${modelId}`), { method: "DELETE", cache: "no-store" });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `Request failed: ${response.status}`);
+  }
+}
+
+export async function testModel(modelId: string): Promise<ModelTestResult> {
+  return requestJson<ModelTestResult>(`/api/models/${modelId}/test`, { method: "POST" });
+}
+
+export async function getModelScenarios(): Promise<ModelScenario[]> {
+  return requestJson<ModelScenario[]>("/api/model-scenarios");
+}
+
+export async function getModelRoutes(): Promise<ModelRoute[]> {
+  return requestJson<ModelRoute[]>("/api/model-routes");
+}
+
+export async function updateModelRoute(scenario: string, payload: ModelRoutePayload): Promise<ModelRoute> {
+  return requestJson<ModelRoute>(`/api/model-routes/${scenario}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function testModelRoute(scenario: string): Promise<ModelRouteTestResult> {
+  return requestJson<ModelRouteTestResult>(`/api/model-routes/${scenario}/test`, { method: "POST" });
 }
 
 export async function generateTaskFileChunks(taskFileId: string): Promise<DocumentChunk[]> {

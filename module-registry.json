@@ -33,10 +33,10 @@
   },
   {
     "id": "M04",
-    "name": "LLM Service 与调用日志",
+    "name": "模型管理与模型路由",
     "status": "implemented",
-    "description": "保留统一 LLM Service、OpenAI-compatible Adapter 和 LLM 调用日志。",
-    "doc": "docs/modules/active/M04_V03_LLM_SERVICE_LOGGING.md",
+    "description": "管理 Provider、模型能力标签和 scenario 路由；所有 LLM 调用按 scenario 选择模型并记录日志。",
+    "doc": "docs/modules/active/M04_MODEL_REGISTRY_ROUTING.md",
     "enabled": true
   },
   {

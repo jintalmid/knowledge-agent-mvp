@@ -30,6 +30,9 @@ class LlmCallLogRead(BaseModel):
     security_level: str | None = None
     agent_run_id: str | None = None
     iteration_id: str | None = None
+    scenario: str | None = None
+    provider_id: str | None = None
+    model_id: str | None = None
     module_name: str
     provider_type: str
     model_name: str

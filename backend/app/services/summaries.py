@@ -121,6 +121,7 @@ def summarize_task_file(connection: Connection, task_file_id: str) -> FileSummar
         llm_result = llm_service.call_llm(
             connection,
             task_id=source["task_id"],
+            scenario="file_summary",
             module_name="M06_LLM_SUMMARY_TAGGING",
             system_prompt=system_prompt,
             user_prompt=user_prompt,
