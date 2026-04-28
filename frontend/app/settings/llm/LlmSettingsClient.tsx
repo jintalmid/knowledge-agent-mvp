@@ -8,14 +8,19 @@ export default function LlmSettingsClient() {
   const [settings, setSettings] = useState<LlmSettings | null>(null);
   const [testResult, setTestResult] = useState<LlmTestResult | null>(null);
   const [isTesting, setIsTesting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
+    setIsLoading(true);
     setError(null);
     try {
       setSettings(await getLlmSettings());
     } catch (err) {
+      setSettings(null);
       setError(err instanceof Error ? err.message : "LLM 设置加载失败");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -62,19 +67,29 @@ export default function LlmSettingsClient() {
               当前页面只读配置状态，不在浏览器中保存 API Key。
             </p>
           </div>
-          <span className={settings?.ready ? "rounded-md bg-emerald-50 px-2.5 py-1 text-sm font-medium text-emerald-700" : "rounded-md bg-red-50 px-2.5 py-1 text-sm font-medium text-red-700"}>
-            {settings?.ready ? "配置项完整" : "配置项不完整"}
+          <span
+            className={
+              isLoading
+                ? "rounded-md bg-slate-100 px-2.5 py-1 text-sm font-medium text-slate-600"
+                : settings?.ready
+                  ? "rounded-md bg-emerald-50 px-2.5 py-1 text-sm font-medium text-emerald-700"
+                  : "rounded-md bg-red-50 px-2.5 py-1 text-sm font-medium text-red-700"
+            }
+          >
+            {isLoading ? "读取中" : settings?.ready ? "配置项完整" : "配置项不完整"}
           </span>
         </div>
 
         <dl className="grid gap-4 md:grid-cols-2">
           <div>
             <dt className="text-xs font-medium text-slate-500">配置来源</dt>
-            <dd className="mt-1 text-sm text-slate-900">{settings?.config_source ?? "加载中"}</dd>
+            <dd className="mt-1 text-sm text-slate-900">{isLoading ? "加载中" : settings?.config_source ?? "未从后端返回"}</dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-slate-500">配置文件</dt>
-            <dd className="mt-1 break-all font-mono text-sm text-slate-900">{settings?.env_file_path ?? "加载中"}</dd>
+            <dd className="mt-1 break-all font-mono text-sm text-slate-900">
+              {isLoading ? "加载中" : settings?.env_file_path ?? "未从后端返回"}
+            </dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-slate-500">前端连接的后端 API</dt>
@@ -82,23 +97,25 @@ export default function LlmSettingsClient() {
           </div>
           <div>
             <dt className="text-xs font-medium text-slate-500">LLM provider</dt>
-            <dd className="mt-1 font-mono text-sm text-slate-900">{settings?.provider_type ?? "未配置"}</dd>
+            <dd className="mt-1 font-mono text-sm text-slate-900">{isLoading ? "加载中" : settings?.provider_type ?? "未配置"}</dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-slate-500">LLM base_url</dt>
-            <dd className="mt-1 break-all font-mono text-sm text-slate-900">{settings?.base_url ?? "未配置"}</dd>
+            <dd className="mt-1 break-all font-mono text-sm text-slate-900">{isLoading ? "加载中" : settings?.base_url ?? "未配置"}</dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-slate-500">LLM model</dt>
-            <dd className="mt-1 font-mono text-sm text-slate-900">{settings?.model ?? "未配置"}</dd>
+            <dd className="mt-1 font-mono text-sm text-slate-900">{isLoading ? "加载中" : settings?.model ?? "未配置"}</dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-slate-500">LLM api_key</dt>
-            <dd className="mt-1 font-mono text-sm text-slate-900">{settings?.api_key_configured ? "已配置，已隐藏" : "未配置"}</dd>
+            <dd className="mt-1 font-mono text-sm text-slate-900">
+              {isLoading ? "加载中" : settings?.api_key_configured ? "已配置，已隐藏" : "未配置"}
+            </dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-slate-500">timeout</dt>
-            <dd className="mt-1 font-mono text-sm text-slate-900">{settings ? `${settings.timeout_seconds}s` : "加载中"}</dd>
+            <dd className="mt-1 font-mono text-sm text-slate-900">{isLoading ? "加载中" : settings ? `${settings.timeout_seconds}s` : "未从后端返回"}</dd>
           </div>
         </dl>
         <div className="mt-5 flex items-center gap-3">
