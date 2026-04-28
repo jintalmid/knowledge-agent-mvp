@@ -2,7 +2,7 @@
 
 本目录保存 `knowledge-agent-mvp` 的架构说明、模块说明和阶段计划。
 
-当前文档主线是 v0.3：AutoGPT / ReAct 阶段 0 版。早期 v0.2 文件处理文档仍保留在仓库中作为历史上下文，但当前模块注册表以 `module-registry.json` 和 `docs/modules/*_V03_*.md` 为准。
+当前文档主线是 v0.3：AutoGPT / ReAct 阶段 0 版。早期 v0.2 文件处理文档保留在 `docs/modules/archived/` 中作为历史上下文，但当前模块注册表以 `module-registry.json` 和 `docs/modules/active/` 为准。
 
 ## 文档入口
 

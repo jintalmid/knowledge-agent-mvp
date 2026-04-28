@@ -54,7 +54,9 @@ knowledge-agent-mvp/
   docs/
     README.md
     03_ORCHESTRATION_PLAN.md
-    modules/               M00-M13 模块说明
+    modules/
+      active/              v0.3 当前唯一模块调用契约
+      archived/            v0.2 历史模块文档
   module-registry.json     当前模块注册表
   README.md
 ```

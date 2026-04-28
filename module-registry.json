@@ -4,7 +4,7 @@
     "name": "项目基座与配置",
     "status": "implemented",
     "description": "保留 FastAPI、Next.js、SQLite、环境配置和模块注册表。",
-    "doc": "docs/modules/M00_V03_PROJECT_BASE.md",
+    "doc": "docs/modules/active/M00_V03_PROJECT_BASE.md",
     "enabled": true
   },
   {
@@ -12,7 +12,7 @@
     "name": "身份与权限预留",
     "status": "reserved",
     "description": "继续使用 demo 用户上下文，复杂权限降级为未来预留。",
-    "doc": "docs/modules/M01_V03_AUTH_PERMISSION_PLACEHOLDER.md",
+    "doc": "docs/modules/active/M01_V03_AUTH_PERMISSION_PLACEHOLDER.md",
     "enabled": true
   },
   {
@@ -20,7 +20,7 @@
     "name": "Agent 任务空间",
     "status": "implemented",
     "description": "保留现有 tasks 作为 Agent Run 的任务空间和文件上下文容器。",
-    "doc": "docs/modules/M02_V03_AGENT_WORKSPACE.md",
+    "doc": "docs/modules/active/M02_V03_AGENT_WORKSPACE.md",
     "enabled": true
   },
   {
@@ -28,7 +28,7 @@
     "name": "文件资产与解析支撑",
     "status": "supporting",
     "description": "保留上传、基础解析和摘要能力；复杂去重与正式知识库能力降级为预留。",
-    "doc": "docs/modules/M03_V03_FILE_CONTEXT_SUPPORT.md",
+    "doc": "docs/modules/active/M03_V03_FILE_CONTEXT_SUPPORT.md",
     "enabled": true
   },
   {
@@ -36,7 +36,7 @@
     "name": "LLM Service 与调用日志",
     "status": "implemented",
     "description": "保留统一 LLM Service、OpenAI-compatible Adapter 和 LLM 调用日志。",
-    "doc": "docs/modules/M04_V03_LLM_SERVICE_LOGGING.md",
+    "doc": "docs/modules/active/M04_V03_LLM_SERVICE_LOGGING.md",
     "enabled": true
   },
   {
@@ -44,7 +44,7 @@
     "name": "Tool Registry Service",
     "status": "implemented",
     "description": "注册 Agent 可调用工具，提供统一工具清单和调用 API。",
-    "doc": "docs/modules/M05_V03_TOOL_REGISTRY.md",
+    "doc": "docs/modules/active/M05_V03_TOOL_REGISTRY.md",
     "enabled": true
   },
   {
@@ -52,7 +52,7 @@
     "name": "Agent Run 数据模型",
     "status": "implemented",
     "description": "新增 agent_runs、agent_iterations、observations 三张表。",
-    "doc": "docs/modules/M06_V03_AGENT_RUN_MODEL.md",
+    "doc": "docs/modules/active/M06_V03_AGENT_RUN_MODEL.md",
     "enabled": true
   },
   {
@@ -60,7 +60,7 @@
     "name": "Agent Runner Service",
     "status": "implemented",
     "description": "执行 Agent Run 主循环，管理最多 10 轮迭代、工具调用和最终答案生成。",
-    "doc": "docs/modules/M07_V03_AGENT_RUNNER_SERVICE.md",
+    "doc": "docs/modules/active/M07_V03_AGENT_RUNNER_SERVICE.md",
     "enabled": true
   },
   {
@@ -68,7 +68,7 @@
     "name": "ReAct Iteration Loop",
     "status": "implemented",
     "description": "每轮执行 plan -> tool call -> observation -> reflection -> decision。",
-    "doc": "docs/modules/M08_V03_REACT_ITERATION_LOOP.md",
+    "doc": "docs/modules/active/M08_V03_REACT_ITERATION_LOOP.md",
     "enabled": true
   },
   {
@@ -76,7 +76,7 @@
     "name": "read_text_file 工具",
     "status": "implemented",
     "description": "基于已解析文本内容调用 LLM 抽取 observation 和 evidence。",
-    "doc": "docs/modules/M09_V03_TOOL_READ_TEXT_FILE.md",
+    "doc": "docs/modules/active/M09_V03_TOOL_READ_TEXT_FILE.md",
     "enabled": true
   },
   {
@@ -84,7 +84,7 @@
     "name": "analyze_excel_file 工具",
     "status": "implemented",
     "description": "复用现有 Excel 代码生成与受限执行能力，已包装为 Agent 工具。",
-    "doc": "docs/modules/M10_V03_TOOL_ANALYZE_EXCEL_FILE.md",
+    "doc": "docs/modules/active/M10_V03_TOOL_ANALYZE_EXCEL_FILE.md",
     "enabled": true
   },
   {
@@ -92,7 +92,7 @@
     "name": "Agent Run 详情与结果展示",
     "status": "implemented",
     "description": "展示 Agent Run 每轮过程、工具观察、反思、决策和最终答案。",
-    "doc": "docs/modules/M11_V03_AGENT_RUN_VIEW.md",
+    "doc": "docs/modules/active/M11_V03_AGENT_RUN_VIEW.md",
     "enabled": true
   },
   {
@@ -100,7 +100,7 @@
     "name": "v0.3 能力盘点",
     "status": "planned",
     "description": "将原阶段 0 能力检查迁移为 Agent Runner 能力盘点。",
-    "doc": "docs/modules/M12_V03_AGENT_CAPABILITY_CHECK.md",
+    "doc": "docs/modules/active/M12_V03_AGENT_CAPABILITY_CHECK.md",
     "enabled": false
   },
   {
@@ -108,7 +108,7 @@
     "name": "Debug 与历史日志",
     "status": "implemented",
     "description": "保留 LLM 调用日志页面，并为 Agent Run 调试信息预留入口。",
-    "doc": "docs/modules/M13_V03_DEBUG_LOGS.md",
+    "doc": "docs/modules/active/M13_V03_DEBUG_LOGS.md",
     "enabled": true
   }
 ]

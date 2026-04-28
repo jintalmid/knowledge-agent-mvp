@@ -1,3 +1,12 @@
+"""Legacy v0.2 text QA compatibility service.
+
+The v0.3 primary path is Agent Runner:
+POST /api/tasks/{task_id}/agent-runs -> tool calls -> observations -> final answer.
+
+This module remains available for the older /ask page and for reading historical
+answers via /results. Do not add new Agent Runner behavior here.
+"""
+
 import json
 from datetime import UTC, datetime
 from sqlite3 import Connection, Row

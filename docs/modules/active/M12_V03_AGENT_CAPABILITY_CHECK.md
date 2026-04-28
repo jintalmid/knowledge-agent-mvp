@@ -2,9 +2,11 @@
 
 ## 模块目标
 
-将原 v0.2 的阶段 0 能力检查迁移为 v0.3 Agent Runner 能力盘点。当前注册表中该模块仍标记为 planned，但已有兼容的能力检查页面和 API。
+将原 v0.2 的阶段 0 能力检查迁移为 v0.3 Agent Runner 能力盘点。当前注册表中该模块仍标记为 planned。
 
-## 当前已有能力
+当前已有页面和 API 仍是 legacy compatibility，用于观察旧流程完整度；它们不是 v0.3 的最终调用契约。
+
+## 当前 Legacy 兼容能力
 
 API：
 
@@ -15,7 +17,7 @@ API：
 
 - `/modules/capability-check`
 
-## 当前检查项
+## 当前 Legacy 检查项
 
 - `task_created`
 - `file_uploaded`
@@ -43,6 +45,12 @@ API：
 - observations_created。
 - final_answer_saved。
 - llm_logs_linked_to_agent_run。
+
+## 迁移输入
+
+- `backend/app/services/capability.py`：旧版 phase 0 检查，保留现有页面使用。
+- `backend/app/services/retrieval.py`：旧版 retrieval/chunk 检查来源，可作为 file context available 的参考，但不再定义主流程。
+- `backend/app/services/qa.py`：旧版 `/ask` 文本问答，结果表结构仍复用 `answers`，但 v0.3 应优先检查 `answers.agent_run_id`。
 
 ## 响应格式
 

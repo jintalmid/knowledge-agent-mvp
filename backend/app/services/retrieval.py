@@ -1,3 +1,14 @@
+"""Legacy v0.2 retrieval and chunk compatibility service.
+
+The v0.3 primary path uses Agent Runner plus Tool Registry. File selection is
+handled by the runner prompt and tools such as list_file_summaries,
+read_text_file, and analyze_excel_file.
+
+This module remains available for the older retrieval page, chunk debug APIs,
+and as migration input for the future M12 capability check. Embedding/hybrid
+retrieval are still placeholders.
+"""
+
 import json
 import re
 from datetime import UTC, datetime

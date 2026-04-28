@@ -49,7 +49,7 @@ Agent Run 失败时：
    - `M08_V03_REACT_REFLECTION`
    - `M07_V03_AGENT_FINAL_ANSWER`
    - `M09_V03_TOOL_READ_TEXT_FILE`
-   - `M10_EXCEL_SANDBOX_ANALYSIS`
+   - `M10_EXCEL_SANDBOX_ANALYSIS` / `M10_V03_TOOL_ANALYZE_EXCEL_FILE`
 4. 如果 Excel 失败，查看 `excel_analysis_runs` 的 `first_error`、`stderr`、`generated_code`、`final_code`。
 
 ## 非目标

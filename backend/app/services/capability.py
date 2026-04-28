@@ -1,3 +1,13 @@
+"""Legacy v0.2 phase-0 capability check service.
+
+The current M12 target is a v0.3 Agent Runner capability check centered on
+agent_runs, agent_iterations, observations, answers.agent_run_id, and
+llm_call_logs agent associations.
+
+This module remains available for the existing /modules/capability-check page
+until M12 is migrated. Keep changes here compatibility-focused.
+"""
+
 import json
 from sqlite3 import Connection
 
