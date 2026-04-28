@@ -8,7 +8,7 @@
 
 - 只读取属于指定 `task_id` 的 `task_file_id`。
 - 只读取 `parsed_contents.content_type = text` 的文件。
-- 支持 txt、md、pdf 解析后的文本内容。
+- 支持 txt、md、markdown、rst、log、json、xml、yaml、yml、html、htm、rtf、docx、pdf 解析后的文本内容。
 - 调用 LLM 生成结构化 observation。
 - LLM 调用会写入 `llm_call_logs`，并可关联 `agent_run_id` 和 `iteration_id`。
 

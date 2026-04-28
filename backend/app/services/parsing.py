@@ -1,8 +1,12 @@
 import csv
 import json
+import re
+import zipfile
 from datetime import UTC, datetime
+from html.parser import HTMLParser
 from pathlib import Path
 from sqlite3 import Connection, Row
+from xml.etree import ElementTree
 from typing import Any
 from uuid import uuid4
 
@@ -14,8 +18,11 @@ from pypdf import PdfReader
 from app.schemas.parsing import ParsedContentRead
 from app.services.tasks import get_task
 
-TEXT_EXTENSIONS = {"txt", "md", "pdf"}
+PLAIN_TEXT_EXTENSIONS = {"txt", "md", "markdown", "rst", "log", "json", "xml", "yaml", "yml"}
+STRUCTURED_TEXT_EXTENSIONS = {"pdf", "docx", "rtf", "html", "htm"}
+TEXT_EXTENSIONS = PLAIN_TEXT_EXTENSIONS | STRUCTURED_TEXT_EXTENSIONS
 TABLE_EXTENSIONS = {"csv", "xlsx", "xls"}
+SUPPORTED_FILE_EXTENSIONS = TEXT_EXTENSIONS | TABLE_EXTENSIONS
 
 
 def _now_iso() -> str:
@@ -92,6 +99,84 @@ def _read_pdf_text(path: Path) -> str:
         if text.strip():
             page_text.append(f"--- page {index} ---\n{text.strip()}")
     return "\n\n".join(page_text)
+
+
+def _read_docx_text(path: Path) -> str:
+    paragraphs: list[str] = []
+    try:
+        with zipfile.ZipFile(path) as archive:
+            document_xml = archive.read("word/document.xml")
+    except KeyError as exc:
+        raise ValueError("docx document.xml not found") from exc
+    except zipfile.BadZipFile as exc:
+        raise ValueError("invalid docx file") from exc
+
+    root = ElementTree.fromstring(document_xml)
+    namespace = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+    for paragraph in root.findall(".//w:p", namespace):
+        parts: list[str] = []
+        for node in paragraph.iter():
+            tag = node.tag.rsplit("}", 1)[-1]
+            if tag == "t" and node.text:
+                parts.append(node.text)
+            elif tag == "tab":
+                parts.append("\t")
+            elif tag in {"br", "cr"}:
+                parts.append("\n")
+        text = "".join(parts).strip()
+        if text:
+            paragraphs.append(text)
+    return "\n".join(paragraphs)
+
+
+class _TextOnlyHtmlParser(HTMLParser):
+    BLOCK_TAGS = {"address", "article", "aside", "blockquote", "br", "dd", "div", "dl", "dt", "footer", "h1", "h2", "h3", "h4", "h5", "h6", "header", "hr", "li", "main", "nav", "ol", "p", "pre", "section", "table", "tr", "ul"}
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.parts: list[str] = []
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in {"script", "style", "noscript"}:
+            self._skip_depth += 1
+            return
+        if tag in self.BLOCK_TAGS:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"script", "style", "noscript"} and self._skip_depth > 0:
+            self._skip_depth -= 1
+            return
+        if tag in self.BLOCK_TAGS:
+            self.parts.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_depth == 0:
+            self.parts.append(data)
+
+    def text(self) -> str:
+        text = "".join(self.parts)
+        lines = [" ".join(line.split()) for line in text.splitlines()]
+        return "\n".join(line for line in lines if line)
+
+
+def _read_html_text(path: Path) -> str:
+    parser = _TextOnlyHtmlParser()
+    parser.feed(_read_text(path))
+    return parser.text()
+
+
+def _read_rtf_text(path: Path) -> str:
+    text = _read_text(path)
+    text = re.sub(r"\\'[0-9a-fA-F]{2}", " ", text)
+    text = re.sub(r"\\par[d]?", "\n", text)
+    text = re.sub(r"\\tab", "\t", text)
+    text = re.sub(r"\\[a-zA-Z]+\d* ?", "", text)
+    text = text.replace("\\{", "{").replace("\\}", "}").replace("\\\\", "\\")
+    text = text.replace("{", "").replace("}", "")
+    lines = [" ".join(line.split()) for line in text.splitlines()]
+    return "\n".join(line for line in lines if line)
 
 
 def _infer_value_type(value: Any) -> str:
@@ -287,13 +372,43 @@ def parse_task_file(connection: Connection, task_file_id: str) -> ParsedContentR
 
     set_parse_status(connection, task_file_id, "parsing", None)
     try:
-        if file_ext in {"txt", "md"}:
+        if file_ext in PLAIN_TEXT_EXTENSIONS:
             parsed_content = _save_parsed_content(
                 connection=connection,
                 task_file_id=task_file_id,
                 physical_file_id=source["physical_file_id"],
                 content_type="text",
                 text_content=_read_text(path),
+                excel_profile=None,
+                parse_quality="ok",
+            )
+        elif file_ext == "docx":
+            parsed_content = _save_parsed_content(
+                connection=connection,
+                task_file_id=task_file_id,
+                physical_file_id=source["physical_file_id"],
+                content_type="text",
+                text_content=_read_docx_text(path),
+                excel_profile=None,
+                parse_quality="ok",
+            )
+        elif file_ext in {"html", "htm"}:
+            parsed_content = _save_parsed_content(
+                connection=connection,
+                task_file_id=task_file_id,
+                physical_file_id=source["physical_file_id"],
+                content_type="text",
+                text_content=_read_html_text(path),
+                excel_profile=None,
+                parse_quality="ok",
+            )
+        elif file_ext == "rtf":
+            parsed_content = _save_parsed_content(
+                connection=connection,
+                task_file_id=task_file_id,
+                physical_file_id=source["physical_file_id"],
+                content_type="text",
+                text_content=_read_rtf_text(path),
                 excel_profile=None,
                 parse_quality="ok",
             )

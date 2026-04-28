@@ -13,7 +13,7 @@ from app.schemas.file import PhysicalFileRead, TaskFileRead
 from app.services import parsing as parsing_service
 from app.services.tasks import get_task
 
-ALLOWED_FILE_EXTENSIONS = {".txt", ".md", ".pdf", ".csv", ".xlsx", ".xls"}
+ALLOWED_FILE_EXTENSIONS = {f".{extension}" for extension in parsing_service.SUPPORTED_FILE_EXTENSIONS}
 
 
 def _now_iso() -> str:

@@ -7,7 +7,8 @@
 ## 当前实现
 
 - SQLite 表：`parsed_contents`
-- 支持文件类型：`txt`、`md`、`pdf`、`csv`、`xlsx`、`xls`
+- 支持文本类文件：`txt`、`md`、`markdown`、`rst`、`log`、`json`、`xml`、`yaml`、`yml`、`html`、`htm`、`rtf`、`docx`、`pdf`
+- 支持表格类文件：`csv`、`xlsx`、`xls`
 - 文本类保存到 `text_content`
 - CSV / Excel 保存结构化 `excel_profile_json`
 - 更新 `task_files.parse_status`
@@ -37,7 +38,7 @@ GET /api/task-files/{task_file_id}/parsed-content
 
 ## 文本解析
 
-`txt`、`md`、`pdf` 文件读取为文本：
+`txt`、`md`、`markdown`、`rst`、`log`、`json`、`xml`、`yaml`、`yml`、`html`、`htm`、`rtf`、`docx`、`pdf` 文件读取为文本：
 
 ```text
 content_type = text
@@ -45,7 +46,7 @@ text_content = 文件文本
 parse_quality = ok
 ```
 
-PDF 当前只支持可复制文本抽取，不做 OCR；扫描件图片 PDF 可能得到空文本。
+PDF 当前只支持可复制文本抽取，不做 OCR；扫描件图片 PDF 可能得到空文本。DOCX 当前抽取正文段落文本，不处理批注、修订痕迹或嵌入对象。
 
 ## CSV / Excel 解析
 

@@ -9,10 +9,11 @@
 - 文件上传保存到 `backend/uploads/{sha256}/`。
 - 物理文件基于 SHA256 去重。
 - `physical_files` 和 `task_files` 解耦。
-- 支持 txt、md、pdf、csv、xlsx、xls。
+- 支持文本类：txt、md、markdown、rst、log、json、xml、yaml、yml、html、htm、rtf、docx、pdf。
+- 支持表格类：csv、xlsx、xls。
 - 上传创建 task_file 后自动调用解析服务。
 - 自动解析失败不会导致上传接口失败；文件保留，`parse_status = failed`，`parse_error` 记录简短错误。
-- 文本/PDF 解析为 `text_content`。
+- 文本、PDF、DOCX、HTML、RTF 等文本类文件解析为 `text_content`。
 - CSV/Excel 解析为 `excel_profile_json`。
 - 文件摘要保存到 `file_summaries`。
 

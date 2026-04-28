@@ -1,4 +1,5 @@
 import asyncio
+import zipfile
 from io import BytesIO
 
 import pytest
@@ -36,6 +37,37 @@ def _create_task(connection) -> str:
     return task.id
 
 
+def _minimal_docx(text: str) -> bytes:
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr(
+            "[Content_Types].xml",
+            """<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>""",
+        )
+        archive.writestr(
+            "_rels/.rels",
+            """<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>""",
+        )
+        archive.writestr(
+            "word/document.xml",
+            f"""<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>{text}</w:t></w:r></w:p>
+  </w:body>
+</w:document>""",
+        )
+    return buffer.getvalue()
+
+
 def test_upload_success_auto_parse_success(workspace):
     with db_session() as connection:
         task_id = _create_task(connection)
@@ -55,6 +87,32 @@ def test_upload_success_auto_parse_success(workspace):
         assert parsed is not None
         assert parsed.content_type == "text"
         assert parsed.text_content == "hello auto parse"
+
+
+def test_upload_docx_auto_parses_as_text(workspace):
+    with db_session() as connection:
+        task_id = _create_task(connection)
+        task_file = asyncio.run(
+            file_service.create_task_file(
+                connection,
+                task_id,
+                _upload(
+                    "brief.docx",
+                    _minimal_docx("DOCX auto parse works"),
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ),
+                CurrentUser(),
+            )
+        )
+
+        parsed = parsing_service.get_parsed_content(connection, task_file.id)
+
+        assert task_file.parse_status == "parsed"
+        assert task_file.parse_error is None
+        assert task_file.file_ext == "docx"
+        assert parsed is not None
+        assert parsed.content_type == "text"
+        assert parsed.text_content == "DOCX auto parse works"
 
 
 def test_upload_success_parse_failure_keeps_file(workspace, monkeypatch):

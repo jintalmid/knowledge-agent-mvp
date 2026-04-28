@@ -6,6 +6,29 @@ import Pagination from "@/components/Pagination";
 import { deleteTaskFile, getTask, getTaskFiles, parseTaskFile, Task, TaskFile, uploadTaskFile } from "@/lib/api";
 import { usePagination } from "@/lib/usePagination";
 
+const SUPPORTED_FILE_TYPES = [
+  "txt",
+  "md",
+  "markdown",
+  "rst",
+  "log",
+  "json",
+  "xml",
+  "yaml",
+  "yml",
+  "html",
+  "htm",
+  "rtf",
+  "docx",
+  "pdf",
+  "csv",
+  "xlsx",
+  "xls",
+];
+
+const SUPPORTED_FILE_ACCEPT = SUPPORTED_FILE_TYPES.map((extension) => `.${extension}`).join(",");
+const SUPPORTED_FILE_LABEL = "txt、md、docx、pdf、json、html、rtf、csv、xlsx、xls 等";
+
 function formatBytes(bytes: number) {
   if (bytes < 1024) {
     return `${bytes} B`;
@@ -208,7 +231,7 @@ export default function TaskFilesClient({ taskId }: { taskId: string }) {
             onDrop={onDrop}
           >
             <p className="text-sm font-medium text-slate-800">拖拽文件到这里上传</p>
-            <p className="mt-2 text-xs text-slate-500">也可以一次选择多个文件。支持 txt、md、pdf、csv、xlsx、xls。</p>
+            <p className="mt-2 text-xs text-slate-500">也可以一次选择多个文件。支持 {SUPPORTED_FILE_LABEL}。</p>
             <label
               className="mt-4 inline-flex cursor-pointer rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
               htmlFor="task-file-upload"
@@ -216,7 +239,7 @@ export default function TaskFilesClient({ taskId }: { taskId: string }) {
               选择文件
             </label>
             <input
-              accept=".txt,.md,.pdf,.csv,.xlsx,.xls"
+              accept={SUPPORTED_FILE_ACCEPT}
               className="sr-only"
               id="task-file-upload"
               multiple
