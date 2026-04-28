@@ -316,7 +316,12 @@ main() {
   cd "$INSTALL_DIR/frontend"
   npm install
   write_frontend_env "$INSTALL_DIR/frontend/.env.local" "http://$PUBLIC_HOST:$BACKEND_PORT"
-  npm run build
+  if [ -z "${NODE_OPTIONS:-}" ]; then
+    export NODE_OPTIONS="--max-old-space-size=2048"
+  else
+    export NODE_OPTIONS="$NODE_OPTIONS --max-old-space-size=2048"
+  fi
+  npm exec next -- build --webpack
 
   if [[ "$OPEN_UFW" =~ ^[Yy]$ ]]; then
     if command -v ufw >/dev/null 2>&1; then
