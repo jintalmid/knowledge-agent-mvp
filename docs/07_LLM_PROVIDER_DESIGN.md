@@ -16,13 +16,13 @@
 `model_configs` 保存模型配置：
 
 - `model_name` 是真实 API 调用时传给 Provider 的模型名。
-- `model_types_json` 表示模型类型，如 `text`、`vision`、`embedding`。
-- `capability_tags_json` 表示能力标签，如 `reasoning`、`code`、`ocr`。
+- `model_types_json` 在当前前端中作为互斥的主模型类别使用，通常只保存一个值，如 `text`、`vision`、`embedding`、`rerank`。
+- `capability_tags_json` 表示该类别下的能力标签，如文本模型的 `reasoning`、`code`，视觉/文档模型的 `vision`、`document_parse`、`ocr`。
 - `context_window` 表示模型可接收的上下文窗口。
 - `output_window` 表示模型建议或允许的最大输出窗口。
 - `is_default_text_model` 标识默认纯文本大语言模型。
 
-前端 `/settings/models` 以 Provider 为父级展示模型；新增模型只能在某个 Provider 下发起。模型类型和能力标签使用按钮式多选，避免通过逗号文本维护结构化能力。
+前端 `/settings/models` 以 Provider 为父级展示模型；新增模型只能在某个 Provider 下发起。模型类别使用单选互斥按钮，能力标签使用按类别过滤后的多选按钮。OCR 不作为独立模型类别，而是视觉/文档模型的一种能力标签。
 
 ## Routing
 

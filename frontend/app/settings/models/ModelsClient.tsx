@@ -21,11 +21,10 @@ function listText(value: string[]) {
 }
 
 const modelTypeOptions = [
-  { value: "text", label: "文本" },
-  { value: "vision", label: "视觉 / 多模态" },
-  { value: "embedding", label: "Embedding" },
-  { value: "rerank", label: "Rerank" },
-  { value: "ocr", label: "OCR" },
+  { value: "text", label: "文本生成 / Chat" },
+  { value: "vision", label: "视觉语言 / 多模态" },
+  { value: "embedding", label: "Embedding 向量" },
+  { value: "rerank", label: "Reranker 重排" },
 ];
 
 const capabilityTagOptions = [
@@ -43,8 +42,93 @@ const capabilityTagOptions = [
   { value: "excel", label: "表格分析" },
 ];
 
+const capabilityTagsByModelType: Record<string, string[]> = {
+  text: ["text", "reasoning", "code", "json", "tool_use", "long_context", "excel"],
+  vision: ["text", "vision", "document_parse", "ocr", "reasoning", "json", "long_context"],
+  embedding: ["embedding"],
+  rerank: ["rerank"],
+};
+
+const defaultTagsByModelType: Record<string, string[]> = {
+  text: ["text", "reasoning"],
+  vision: ["text", "vision", "document_parse"],
+  embedding: ["embedding"],
+  rerank: ["rerank"],
+};
+
+const providerTypeOptions = [
+  { value: "openai_compatible", label: "OpenAI-compatible", note: "当前可执行，适配 OpenAI、Ollama、vLLM、LM Studio 等兼容接口" },
+  { value: "openai", label: "OpenAI 官方", note: "预留，可先用 openai_compatible 接入" },
+  { value: "azure_openai", label: "Azure OpenAI", note: "预留" },
+  { value: "anthropic", label: "Anthropic Claude", note: "预留" },
+  { value: "google_gemini", label: "Google Gemini", note: "预留" },
+  { value: "ollama", label: "Ollama", note: "预留，可先用 openai_compatible + /v1" },
+  { value: "deepseek", label: "DeepSeek", note: "预留，可先用 openai_compatible" },
+  { value: "qwen_dashscope", label: "通义千问 / DashScope", note: "预留，可先用兼容接口" },
+  { value: "volcengine_ark", label: "火山方舟 Ark", note: "预留，可先用兼容接口" },
+  { value: "moonshot", label: "Moonshot / Kimi", note: "预留，可先用兼容接口" },
+  { value: "zhipu", label: "智谱 GLM", note: "预留" },
+  { value: "baichuan", label: "百川智能", note: "预留" },
+  { value: "mistral", label: "Mistral", note: "预留" },
+  { value: "cohere", label: "Cohere", note: "预留" },
+  { value: "local_runtime", label: "本地 Runtime", note: "预留" },
+];
+
 function toggleValue(values: string[], value: string) {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+}
+
+function primaryModelType(types: string[]) {
+  const value = types[0] || "text";
+  return modelTypeOptions.some((option) => option.value === value) ? value : "text";
+}
+
+function capabilityOptionsForType(modelType: string) {
+  const allowedValues = new Set(capabilityTagsByModelType[modelType] || capabilityTagsByModelType.text);
+  return capabilityTagOptions.filter((option) => allowedValues.has(option.value));
+}
+
+function normalizedTagsForType(modelType: string, tags: string[]) {
+  const allowedValues = new Set(capabilityTagsByModelType[modelType] || capabilityTagsByModelType.text);
+  const kept = tags.filter((tag) => allowedValues.has(tag));
+  return kept.length > 0 ? kept : defaultTagsByModelType[modelType] || defaultTagsByModelType.text;
+}
+
+function SingleChoiceSelector({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="grid gap-2">
+      <p className="text-xs font-medium text-slate-500">{label}</p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => {
+          const selected = value === option.value;
+          return (
+            <button
+              className={
+                selected
+                  ? "rounded-md border border-slate-900 bg-slate-950 px-3 py-1.5 text-sm font-medium text-white"
+                  : "rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              }
+              key={option.value}
+              onClick={() => onChange(option.value)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function ChipSelector({
@@ -131,7 +215,7 @@ export default function ModelsClient() {
     name: "",
     provider_type: "openai_compatible",
     base_url: "",
-    api_key_env_name: "LLM_API_KEY",
+    api_key_env_name: "",
     api_key: "",
   });
   const [modelForm, setModelForm] = useState({
@@ -151,6 +235,7 @@ export default function ModelsClient() {
   const [testingModelId, setTestingModelId] = useState<string | null>(null);
 
   const defaultTextModel = useMemo(() => models.find((model) => model.is_default_text_model), [models]);
+  const modelFormType = primaryModelType(modelForm.model_types);
   const enabledModelCount = models.filter((model) => model.enabled).length;
   const enabledProviderCount = providers.filter((provider) => provider.enabled).length;
   const modelsByProviderId = useMemo(() => {
@@ -195,7 +280,7 @@ export default function ModelsClient() {
         api_key: providerForm.api_key || null,
         api_key_env_name: providerForm.api_key_env_name || null,
       });
-      setProviderForm({ name: "", provider_type: "openai_compatible", base_url: "", api_key_env_name: "LLM_API_KEY", api_key: "" });
+      setProviderForm({ name: "", provider_type: "openai_compatible", base_url: "", api_key_env_name: "", api_key: "" });
       setMessage("Provider 已创建");
       await refresh();
     } catch (err) {
@@ -321,19 +406,29 @@ export default function ModelsClient() {
             </label>
             <label className="grid gap-1 text-sm">
               <span className="text-xs font-medium text-slate-500">provider_type</span>
-              <input className="rounded-md border border-slate-300 px-3 py-2" value={providerForm.provider_type} onChange={(event) => setProviderForm({ ...providerForm, provider_type: event.target.value })} required />
+              <select
+                className="rounded-md border border-slate-300 px-3 py-2"
+                value={providerForm.provider_type}
+                onChange={(event) => setProviderForm({ ...providerForm, provider_type: event.target.value })}
+                required
+              >
+                {providerTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs leading-5 text-slate-500">
+                {providerTypeOptions.find((option) => option.value === providerForm.provider_type)?.note}
+              </span>
             </label>
             <label className="grid gap-1 text-sm md:col-span-2">
               <span className="text-xs font-medium text-slate-500">base_url</span>
               <input className="rounded-md border border-slate-300 px-3 py-2" value={providerForm.base_url} onChange={(event) => setProviderForm({ ...providerForm, base_url: event.target.value })} required />
             </label>
-            <label className="grid gap-1 text-sm">
-              <span className="text-xs font-medium text-slate-500">api_key_env_name</span>
-              <input className="rounded-md border border-slate-300 px-3 py-2" value={providerForm.api_key_env_name} onChange={(event) => setProviderForm({ ...providerForm, api_key_env_name: event.target.value })} />
-            </label>
-            <label className="grid gap-1 text-sm">
-              <span className="text-xs font-medium text-slate-500">api_key</span>
-              <input className="rounded-md border border-slate-300 px-3 py-2" type="password" value={providerForm.api_key} onChange={(event) => setProviderForm({ ...providerForm, api_key: event.target.value })} />
+            <label className="grid gap-1 text-sm md:col-span-2">
+              <span className="text-xs font-medium text-slate-500">API Key</span>
+              <input className="rounded-md border border-slate-300 px-3 py-2" placeholder="密钥会提交到后端保存；生产环境后续可改为密钥管理服务" type="password" value={providerForm.api_key} onChange={(event) => setProviderForm({ ...providerForm, api_key: event.target.value })} />
             </label>
             <button className="w-fit rounded-md bg-slate-950 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800" type="submit">创建 Provider</button>
           </form>
@@ -366,7 +461,7 @@ export default function ModelsClient() {
                     <span className="rounded-md bg-white px-2 py-1 text-xs font-medium text-slate-600">{providerModels.length} 个模型</span>
                   </div>
                   <p className="mt-2 break-all font-mono text-xs text-slate-500">{provider.base_url}</p>
-                  <p className="mt-1 text-xs text-slate-500">API Key：{provider.api_key_configured ? "已配置" : "未配置"} / env：{provider.api_key_env_name || "无"}</p>
+                  <p className="mt-1 text-xs text-slate-500">API Key：{provider.api_key_configured ? "已配置" : "未配置"}</p>
                 </div>
                 <div className="flex flex-wrap items-start justify-start gap-2 lg:justify-end">
                   <ActionButton onClick={() => updateModelProvider(provider.id, { enabled: !provider.enabled }).then(refresh)}>{provider.enabled ? "禁用 Provider" : "启用 Provider"}</ActionButton>
@@ -414,23 +509,32 @@ export default function ModelsClient() {
                       <input className="rounded-md border border-slate-300 px-3 py-2" inputMode="numeric" placeholder="例如 4096" value={modelForm.output_window} onChange={(event) => setModelForm({ ...modelForm, provider_id: provider.id, output_window: event.target.value })} />
                     </label>
                     <div className="md:col-span-2">
-                      <ChipSelector
-                        label="模型类型"
-                        onChange={(values) => setModelForm({ ...modelForm, provider_id: provider.id, model_types: values })}
+                      <SingleChoiceSelector
+                        label="模型类别"
+                        onChange={(value) => setModelForm({
+                          ...modelForm,
+                          provider_id: provider.id,
+                          model_types: [value],
+                          capability_tags: normalizedTagsForType(value, modelForm.capability_tags),
+                          is_default_text_model: value === "text" ? modelForm.is_default_text_model : false,
+                        })}
                         options={modelTypeOptions}
-                        values={modelForm.model_types}
+                        value={modelFormType}
                       />
+                      <p className="mt-2 text-xs leading-5 text-slate-500">
+                        模型类别是互斥的主用途。OCR 属于视觉/文档模型的能力标签，不作为独立模型类别。
+                      </p>
                     </div>
                     <div className="md:col-span-2">
                       <ChipSelector
                         label="能力标签"
                         onChange={(values) => setModelForm({ ...modelForm, provider_id: provider.id, capability_tags: values })}
-                        options={capabilityTagOptions}
+                        options={capabilityOptionsForType(modelFormType)}
                         values={modelForm.capability_tags}
                       />
                     </div>
                     <label className="flex items-center gap-2 text-sm text-slate-700">
-                      <input checked={modelForm.is_default_text_model} onChange={(event) => setModelForm({ ...modelForm, provider_id: provider.id, is_default_text_model: event.target.checked })} type="checkbox" />
+                      <input checked={modelForm.is_default_text_model && modelFormType === "text"} disabled={modelFormType !== "text"} onChange={(event) => setModelForm({ ...modelForm, provider_id: provider.id, is_default_text_model: event.target.checked })} type="checkbox" />
                       设为 default_text
                     </label>
                     <div className="flex flex-wrap gap-2 md:justify-end">
@@ -447,6 +551,7 @@ export default function ModelsClient() {
                   <div className="divide-y divide-slate-100 border-y border-slate-100">
                     {providerModels.map((model) => {
                       const edit = editingModels[model.id];
+                      const editType = edit ? primaryModelType(edit.model_types_json) : "text";
                       return (
                         <div className="py-4" key={model.id}>
                           <div className="grid gap-4 xl:grid-cols-[1.35fr_1fr_auto]">
@@ -503,23 +608,34 @@ export default function ModelsClient() {
                                 />
                               </label>
                               <div className="md:col-span-2">
-                                <ChipSelector
-                                  label="模型类型"
-                                  onChange={(values) => setEditingModels((current) => ({ ...current, [model.id]: { ...edit, model_types_json: values } }))}
+                                <SingleChoiceSelector
+                                  label="模型类别"
+                                  onChange={(value) => setEditingModels((current) => ({
+                                    ...current,
+                                    [model.id]: {
+                                      ...edit,
+                                      model_types_json: [value],
+                                      capability_tags_json: normalizedTagsForType(value, edit.capability_tags_json),
+                                      is_default_text_model: value === "text" ? edit.is_default_text_model : false,
+                                    },
+                                  }))}
                                   options={modelTypeOptions}
-                                  values={edit.model_types_json}
+                                  value={editType}
                                 />
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                  模型类别是互斥的主用途。OCR 属于视觉/文档模型的能力标签，不作为独立模型类别。
+                                </p>
                               </div>
                               <div className="md:col-span-2">
                                 <ChipSelector
                                   label="能力标签"
                                   onChange={(values) => setEditingModels((current) => ({ ...current, [model.id]: { ...edit, capability_tags_json: values } }))}
-                                  options={capabilityTagOptions}
+                                  options={capabilityOptionsForType(editType)}
                                   values={edit.capability_tags_json}
                                 />
                               </div>
                               <label className="flex items-center gap-2 text-sm text-slate-700">
-                                <input checked={edit.is_default_text_model} onChange={(event) => setEditingModels((current) => ({ ...current, [model.id]: { ...edit, is_default_text_model: event.target.checked } }))} type="checkbox" />
+                                <input checked={edit.is_default_text_model && editType === "text"} disabled={editType !== "text"} onChange={(event) => setEditingModels((current) => ({ ...current, [model.id]: { ...edit, is_default_text_model: event.target.checked } }))} type="checkbox" />
                                 设为 default_text
                               </label>
                               <label className="flex items-center gap-2 text-sm text-slate-700">
