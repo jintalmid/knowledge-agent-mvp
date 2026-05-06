@@ -23,7 +23,17 @@ function extractUncertainties(markdown: string) {
     .filter((line) => line && keywords.some((keyword) => line.toLowerCase().includes(keyword)));
 }
 
-export default function ResultsClient({ taskId }: { taskId: string }) {
+function resultTypeLabel(answer: Answer) {
+  if (answer.question_type === "agent_run") {
+    return "Agent Run";
+  }
+  if (answer.question_type === "excel_analysis") {
+    return "Excel 分析";
+  }
+  return "文本问答";
+}
+
+export default function ResultsClient({ initialAnswerId, taskId }: { initialAnswerId: string | null; taskId: string }) {
   const router = useRouter();
   const [results, setResults] = useState<Answer[]>([]);
   const [activeAnswerId, setActiveAnswerId] = useState<string | null>(null);
@@ -38,7 +48,15 @@ export default function ResultsClient({ taskId }: { taskId: string }) {
     try {
       const loadedResults = await getTaskResults(taskId);
       setResults(loadedResults);
-      setActiveAnswerId((current) => current ?? loadedResults[0]?.id ?? null);
+      setActiveAnswerId((current) => {
+        if (initialAnswerId && loadedResults.some((answer) => answer.id === initialAnswerId)) {
+          return initialAnswerId;
+        }
+        if (current && loadedResults.some((answer) => answer.id === current)) {
+          return current;
+        }
+        return loadedResults[0]?.id ?? null;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "历史结果加载失败");
     } finally {
@@ -48,7 +66,7 @@ export default function ResultsClient({ taskId }: { taskId: string }) {
 
   useEffect(() => {
     refresh();
-  }, [taskId]);
+  }, [taskId, initialAnswerId]);
 
   async function onCopy(answer: Answer) {
     try {
@@ -139,8 +157,17 @@ export default function ResultsClient({ taskId }: { taskId: string }) {
               type="button"
             >
               <p className="line-clamp-2 text-sm font-medium text-slate-950">{answer.question_text}</p>
-              <p className="mt-2 text-xs text-slate-500">{formatDate(answer.created_at)}</p>
-              <p className="mt-2 font-mono text-xs text-slate-500">{answer.source_refs_json.length} sources</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
+                  {resultTypeLabel(answer)}
+                </span>
+                <span className="text-xs text-slate-500">{formatDate(answer.created_at)}</span>
+              </div>
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{answer.answer_text_markdown}</p>
+              <p className="mt-2 font-mono text-xs text-slate-500">
+                {answer.source_refs_json.length} sources
+                {answer.agent_run_id ? ` / ${answer.agent_run_id}` : ""}
+              </p>
             </button>
           ))}
           {results.length === 0 && !isLoading ? <p className="text-sm text-slate-500">暂无历史结果</p> : null}
@@ -162,13 +189,16 @@ export default function ResultsClient({ taskId }: { taskId: string }) {
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-slate-500">{formatDate(activeAnswer.created_at)}</p>
+                <span className="mt-2 inline-block rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
+                  {resultTypeLabel(activeAnswer)}
+                </span>
                 <h2 className="mt-1 text-lg font-semibold text-slate-950">{activeAnswer.question_text}</h2>
                 {activeAnswer.agent_run_id ? (
                   <Link
-                    className="mt-2 inline-block font-mono text-xs text-slate-500 hover:underline"
+                    className="mt-2 inline-block rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     href={`/tasks/${taskId}/runs/${activeAnswer.agent_run_id}`}
                   >
-                    {activeAnswer.agent_run_id}
+                    查看运行过程
                   </Link>
                 ) : null}
               </div>

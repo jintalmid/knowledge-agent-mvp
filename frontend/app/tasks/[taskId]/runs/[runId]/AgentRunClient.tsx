@@ -24,6 +24,10 @@ function stringList(value: unknown) {
   return value.map((item) => String(item)).filter(Boolean);
 }
 
+function resultsHref(taskId: string, answerId: string | null | undefined) {
+  return answerId ? `/tasks/${taskId}/results?answerId=${answerId}` : `/tasks/${taskId}/results`;
+}
+
 function JsonBlock({ value }: { value: unknown }) {
   return (
     <details className="mt-3 rounded-md border border-slate-200 bg-white p-3">
@@ -77,7 +81,7 @@ export default function AgentRunClient({ taskId, runId }: { taskId: string; runI
           </Link>
           <Link
             className="rounded-md bg-slate-950 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
-            href={`/tasks/${taskId}/results`}
+            href={resultsHref(taskId, agentRun?.answer_id)}
           >
             查看结果
           </Link>
@@ -123,7 +127,7 @@ export default function AgentRunClient({ taskId, runId }: { taskId: string; runI
                 </div>
                 <Link
                   className="rounded-md bg-slate-950 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
-                  href={`/tasks/${taskId}/results`}
+                  href={resultsHref(taskId, agentRun.answer_id)}
                 >
                   查看历史结果
                 </Link>
@@ -131,6 +135,9 @@ export default function AgentRunClient({ taskId, runId }: { taskId: string; runI
               <div className="mt-3 whitespace-pre-wrap rounded-md bg-emerald-50 p-4 text-sm leading-7 text-slate-800">
                 {agentRun.final_answer_markdown}
               </div>
+              <p className="mt-3 font-mono text-xs text-slate-500">
+                {agentRun.answer_id ? `已保存到历史结果：${agentRun.answer_id}` : "尚未找到对应的历史结果记录"}
+              </p>
             </article>
           ) : (
             <article className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -147,6 +154,7 @@ export default function AgentRunClient({ taskId, runId }: { taskId: string; runI
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-slate-500">Iteration {iteration.iteration_index}</p>
+                    <p className="mt-1 break-all font-mono text-xs text-slate-400">{iteration.id}</p>
                     <h2 className="mt-1 text-lg font-semibold text-slate-950">
                       {stringValue(plan.selected_tool, iteration.tool_name ?? "未选择工具")}
                     </h2>
@@ -223,12 +231,17 @@ export default function AgentRunClient({ taskId, runId }: { taskId: string; runI
                 <section className="mt-4 rounded-md border border-slate-100 p-4">
                   <h3 className="text-sm font-semibold text-slate-950">Observation</h3>
                   <div className="mt-3 grid gap-3">
-                    {iteration.observations.map((observation) => (
+                    {iteration.observations.map((observation, observationIndex) => (
                       <div className="rounded-md bg-slate-50 p-3" key={observation.id}>
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                          <p className="font-mono text-xs text-slate-500">
-                            {observation.tool_name} / {observation.status}
-                          </p>
+                          <div>
+                            <p className="font-mono text-xs font-medium text-slate-700">
+                              Observation {iteration.iteration_index}.{observationIndex + 1}
+                            </p>
+                            <p className="mt-1 break-all font-mono text-xs text-slate-500">
+                              {observation.id} / {observation.tool_name} / {observation.status}
+                            </p>
+                          </div>
                           <p className="text-xs text-slate-500">{formatDate(observation.created_at)}</p>
                         </div>
                         <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-800">

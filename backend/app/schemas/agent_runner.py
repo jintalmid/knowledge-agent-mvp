@@ -50,6 +50,7 @@ class AgentIterationRead(BaseModel):
 class AgentRunRead(BaseModel):
     id: str
     task_id: str | None
+    answer_id: str | None = None
     goal: str
     status: str
     max_iterations: int

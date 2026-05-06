@@ -684,12 +684,22 @@ def _selected_file_ids_from_iterations(iterations: list[dict[str, Any]]) -> list
                 for summary in summaries:
                     if isinstance(summary, dict):
                         summary_file_id = summary.get("file_id") or summary.get("task_file_id")
-                        if isinstance(summary_file_id, str) and summary_file_id.strip():
-                            selected.append(summary_file_id.strip())
+                    if isinstance(summary_file_id, str) and summary_file_id.strip():
+                        selected.append(summary_file_id.strip())
     return list(dict.fromkeys(selected))
 
 
+def _sanitize_final_prompt_value(value: Any) -> Any:
+    internal_keys = {"agent_run_id", "iteration_id"}
+    if isinstance(value, dict):
+        return {key: _sanitize_final_prompt_value(item) for key, item in value.items() if key not in internal_keys}
+    if isinstance(value, list):
+        return [_sanitize_final_prompt_value(item) for item in value]
+    return value
+
+
 def _build_final_prompt(question: str, iterations: list[dict[str, Any]]) -> tuple[str, str]:
+    visible_iterations = _sanitize_final_prompt_value(iterations)
     system_prompt = (
         "You are the final answer writer for an enterprise ReAct Agent. "
         "Answer only from observations collected by tools. Output Markdown only."
@@ -699,13 +709,15 @@ def _build_final_prompt(question: str, iterations: list[dict[str, Any]]) -> tupl
         "Requirements:\n"
         "- Directly answer the question.\n"
         "- Mention which files or observations support the answer.\n"
+        "- When citing evidence, use the visible labels in the context such as Iteration 1 or Observation 1.1.\n"
+        "- Do not cite internal database ids such as aiter_* or obs_*.\n"
         "- If information is missing or uncertain, say so clearly.\n"
         "- Do not invent facts outside the observations.\n"
         "- A successful tool_result with output.result_json is valid evidence even if the tool needed a repair attempt before succeeding.\n"
         "- When both target observations and actual metric result_json are present, synthesize them instead of treating later missing-information reflections as the whole result.\n"
         "- Output Markdown only.\n\n"
         f"User question:\n{question}\n\n"
-        f"Agent iterations and observations:\n{_json_dumps(iterations)[-FINAL_CONTEXT_LIMIT:]}"
+        f"Agent iterations and observations:\n{_json_dumps(visible_iterations)[-FINAL_CONTEXT_LIMIT:]}"
     )
     return system_prompt, user_prompt
 
@@ -802,7 +814,20 @@ def get_agent_run(connection: Connection, run_id: str) -> AgentRunRead | None:
         observation = _observation_row_to_read(row)
         observations_by_iteration.setdefault(observation.agent_iteration_id, []).append(observation)
 
+    answer_row = connection.execute(
+        """
+        SELECT a.id
+        FROM answers a
+        JOIN questions q ON q.id = a.question_id
+        WHERE a.agent_run_id = ? AND q.question_type = 'agent_run'
+        ORDER BY a.created_at DESC
+        LIMIT 1
+        """,
+        (run_id,),
+    ).fetchone()
+
     run_data = dict(run_row)
+    run_data["answer_id"] = answer_row["id"] if answer_row is not None else None
     run_data["iterations"] = [
         _iteration_row_to_read(row, observations_by_iteration.get(row["id"], [])) for row in iteration_rows
     ]
@@ -943,8 +968,9 @@ def start_agent_run(connection: Connection, task_id: str, question: str, max_ite
 
             iterations_for_final.append(
                 {
-                    "iteration_id": iteration_id,
+                    "iteration_label": f"Iteration {iteration_index}",
                     "iteration_index": iteration_index,
+                    "observation_label": f"Observation {iteration_index}.1",
                     "plan": plan,
                     "tool_input": tool_input,
                     "tool_result": tool_result,

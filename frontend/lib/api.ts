@@ -414,6 +414,7 @@ export type AgentIteration = {
 export type AgentRun = {
   id: string;
   task_id: string | null;
+  answer_id: string | null;
   goal: string;
   status: string;
   max_iterations: number;
